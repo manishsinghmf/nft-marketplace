@@ -9,6 +9,7 @@ import { MyContext } from "../App/App";
 import { ALERT, ATTRIBUTES_NUMERIC_VALUE_ERROR, CHAIN_NOT_SUPPORTED_ERROR, METAMASK_DISCONNECTED_ERROR, SUCCESSFUL_TRANSACTION, TRANSACTION_HASH } from "../../utils/messageConstants";
 import { convertToEther, getWalletBalance } from "../../utils/wallet";
 import { useNavigate } from "react-router-dom";
+import { publicClient, walletClient } from "../../utils/clients";
 
 function Mint() {
 
@@ -54,7 +55,6 @@ function Mint() {
         setIsModalOpen(true);
         return false;
       }
-
       if (key === "quantity") {
         if (!(value <= 100) || !(value > 0)) {
           setModalHeading(ALERT);
@@ -63,7 +63,7 @@ function Mint() {
           setIsModalOpen(true);
           return false;
         }
-      } else if (key != "name" && key != "description") {
+      } else if (key != "name" && key != "description" && key != "image") {
         if (!(value <= 10) || !(value > 0)) {
           setModalHeading(ALERT);
           setModalDescription(ATTRIBUTES_NUMERIC_VALUE_ERROR);
@@ -102,7 +102,6 @@ function Mint() {
   // Upload image on IPFS
   const uploadImageOnIpfs = async (data) => {
     try {
-
       const uploadResponse = await axios.post(
         PINATA_FILE_UPLOAD_URL,
         data,
@@ -110,8 +109,8 @@ function Mint() {
           maxContentLength: Infinity,
           headers: {
             "Content-Type": "multipart/form-data",
-            pinata_api_key: process.env.REACT_APP_PINATA_API_KEY,
-            pinata_secret_api_key: process.env.REACT_APP_PINATA_SECRET_KEY,
+            pinata_api_key: import.meta.env.VITE_REACT_APP_PINATA_API_KEY,
+            pinata_secret_api_key: import.meta.env.VITE_REACT_APP_PINATA_SECRET_KEY,
           },
         }
       );
@@ -139,8 +138,8 @@ function Mint() {
         {
           headers: {
             "Content-Type": "application/json",
-            pinata_api_key: process.env.REACT_APP_PINATA_API_KEY,
-            pinata_secret_api_key: process.env.REACT_APP_PINATA_SECRET_KEY,
+            pinata_api_key: import.meta.env.VITE_REACT_APP_PINATA_API_KEY,
+            pinata_secret_api_key: import.meta.env.VITE_REACT_APP_PINATA_SECRET_KEY,
           },
         }
       );
@@ -226,7 +225,6 @@ function Mint() {
       data.image = uploadResponse;
 
       const jsonResponse = await uploadJSON(mapformat(data));
-
       // check of the metadata upload was successful
       if (jsonResponse) {
 
@@ -265,53 +263,66 @@ function Mint() {
   /** Execute NFT mint function in Fandom NFT smart contract */
   const mint = async (amount, uri, gas) => {
     try {
+      console.log("Minting NFT using viem...");
+      console.log("nftContract:", nftContract);
 
-      let url = "";
+      // 1️⃣ Send mint transaction
+      const txHash = await walletClient.writeContract({
+        address: nftContract.address,
+        abi: nftContract.abi,
+        functionName: "mint",
+        args: [amount, uri],
+        gas: gas, // Optional, you can omit if you want automatic gas estimation
+        account: walletConnected,
+      });
 
-      await nftContract.methods.mint(amount, uri)
-        .send({
-          from: walletConnected,
-          gasLimit: gas
-        })
-        .on("transactionHash", (hash) => {
-          url = chainConfig.explorerUrl + hash;
-          setModalDescription(`${TRANSACTION_HASH} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-        })
-        .on("receipt", async () => {
-          setModalDescription(`${SUCCESSFUL_TRANSACTION} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-          setWalletEthBalance(await getWalletBalance(walletConnected));
-          setModalButtonEnabled(true);
-          setIsModalOpen(false);
-          navigate('/dashboard')
-        })
-        .on("error", async (error) => {
-          setModalHeading("Minting NFT Failed");
-          setModalDescription(`Failed to mint NFT. ${error.message}`);
-          setModalButtonEnabled(true);
-          setWalletEthBalance(await getWalletBalance(walletConnected));
-        })
+      const url = `${chainConfig.explorerUrl}${txHash}`;
+      setModalDescription(`${TRANSACTION_HASH} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
+
+      console.log("Transaction sent:", txHash);
+
+      // 2️⃣ Wait for confirmation
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      console.log("Transaction confirmed:", receipt);
+
+      if (receipt.status === 'success') {
+        setModalDescription(`${SUCCESSFUL_TRANSACTION} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
+        setWalletEthBalance(await getWalletBalance(walletConnected));
+        setModalButtonEnabled(true);
+        setIsModalOpen(false);
+        navigate('/dashboard');
+      } else {
+        throw new Error("Transaction failed");
+      }
 
     } catch (error) {
-      console.log("error in catch : ", error);
+      console.error("Error while minting NFT:", error);
       setModalHeading("Minting NFT Failed");
       setModalDescription(`Failed to mint NFT. ${error.message}`);
       setModalButtonEnabled(true);
+      setWalletEthBalance(await getWalletBalance(walletConnected));
     }
-  }
+  };
 
   const checkUserHasSufficientBalanceForTx = async (amount, uri) => {
     try {
-      const gasLimit = await nftContract.methods.mint(amount, uri)
-        .estimateGas({ from: walletConnected });
+      console.log("nftContract",)
+      const gasLimit = await publicClient.estimateContractGas({
+        address: nftContract.address,
+        abi: nftContract.abi,
+        functionName: "mint",
+        args: [amount, uri],
+        account: walletConnected,
+      });
 
       const bufferedGasLimit = Math.round(
         Number(gasLimit) + (Number(gasLimit) * Number(0.2))
       );
 
-      const currentGasPrice = await web3.eth.getGasPrice();
-      const txFee = currentGasPrice * bufferedGasLimit;
+      const currentGasPrice = await publicClient.getGasPrice();
+      const txFee = currentGasPrice * BigInt(bufferedGasLimit);
       const feeInEth = convertToEther(txFee.toString(), 18);
-
+      console.log("Estimated Fee in ETH:", feeInEth, walletEthBalance);
       if (Number(walletEthBalance) < Number(feeInEth)) {
         return { gas: bufferedGasLimit, status: false };
       } else {

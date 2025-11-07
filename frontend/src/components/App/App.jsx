@@ -65,7 +65,7 @@ function App() {
                 setWalletConnected(null);
                 setNetworkSelected(null);
             } else {
-                let wallet = checkIsMetamaskConnected();
+                let wallet = await checkIsMetamaskConnected();
                 if (!wallet) {
                     wallet = await connectToMetamaskAccount();
                     if (!wallet) {
@@ -77,6 +77,8 @@ function App() {
                         return;
                     }
                 }
+
+                console.log("Connected wallet address: ", wallet);
                 setWeb3(connectToWeb3(window.ethereum));
                 setChainConfig(chainProperties[chain]);
                 setWalletConnected(wallet);

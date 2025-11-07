@@ -6,6 +6,7 @@ import { convertToEther, convertToWei, getAllUnsoldNfts, getWalletBalance } from
 import { getNFTDetailsFromURI } from "../../utils/metaDataFormat";
 import Detail from "../Detail/Detail";
 import { SUCCESSFUL_TRANSACTION, TRANSACTION_HASH } from "../../utils/messageConstants";
+import { publicClient, walletClient } from "../../utils/clients";
 
 function Buy() {
 
@@ -38,6 +39,15 @@ function Buy() {
         for (let element of nfts) {
           // Remove the NFT's whose owner is current connected account
           if ((element.seller).toLowerCase() != (walletConnected).toLowerCase()) {
+
+
+            // Below code is temporary fix for static PINATA_GATEWAY_BASE_URL in smart contract
+            if (element.uri.startsWith("https://harlequin-major-urial-890.mypinata.cloud/ipfs/")) {
+              element.uri = element.uri.replace("https://harlequin-major-urial-890.mypinata.cloud/ipfs/", "https://beige-used-manatee-520.mypinata.cloud/ipfs/");
+            }
+            // Fix end here, Remove it when smart contract updated 
+
+
             data = await getNFTDetailsFromURI(element.uri);
             if (data) {
               itemList.push(setNftItem(data, element));
@@ -102,14 +112,20 @@ function Buy() {
 
     try {
 
-      const gasLimit = await marketplaceContract.methods.buy(itemId)
-        .estimateGas({ from: walletConnected, value: priceInWei });
+      const gasEstimate = await publicClient.estimateContractGas({
+        address: marketplaceContract.options.address,
+        abi: marketplaceContract.options.jsonInterface,
+        functionName: "buy",
+        args: [itemId],
+        account: walletConnected,
+        value: BigInt(priceInWei)
+      });
 
       const bufferedGasLimit = Math.round(
-        Number(gasLimit) + (Number(gasLimit) * Number(0.2))
+        Number(gasLimit) + (Number(gasEstimate) * Number(0.2))
       );
 
-      const currentGasPrice = await web3.eth.getGasPrice();
+      const currentGasPrice = await publicClient.getGasPrice();
       const txFee = (Number(currentGasPrice) * bufferedGasLimit) + Number(priceInWei);
       const feeInEth = convertToEther(txFee.toString(), 18);
 
@@ -130,30 +146,31 @@ function Buy() {
   const buyTransaction = async (itemId, priceInWei, gas) => {
     try {
 
-      let url = "";
+      const hash = await walletClient.writeContract({
+        address: marketplaceContract.options.address,
+        abi: marketplaceContract.abi,
+        functionName: "buy",
+        args: [itemId],
+        account: walletConnected,
+        value: BigInt(priceInWei),
+        gasLimit: BigInt(gas)
+      });
 
-      await marketplaceContract.methods.buy(itemId)
-        .send({
-          from: walletConnected,
-          gasLimit: gas,
-          value: priceInWei
-        })
-        .on("transactionHash", (hash) => {
-          url = chainConfig.explorerUrl + hash;
-          setModalDescription(`${TRANSACTION_HASH} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-        })
-        .on("receipt", async () => {
-          setModalDescription(`${SUCCESSFUL_TRANSACTION} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-          setWalletEthBalance(await getWalletBalance(walletConnected));
-          await fetchAllNftsOnSale();
-          setModalButtonEnabled(true);
-        })
-        .on("error", async (error) => {
-          setModalHeading("Buy Transaction Failed");
-          setModalDescription(`Failed to buy NFT. ${error.message}`);
-          setModalButtonEnabled(true);
-          setWalletEthBalance(await getWalletBalance(walletConnected));
-        })
+      const url = chainConfig.explorerUrl + hash;
+      setModalDescription(`${TRANSACTION_HASH} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status) {
+        setModalDescription(`${SUCCESSFUL_TRANSACTION} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
+        setWalletEthBalance(await getWalletBalance(walletConnected));
+        await fetchAllNftsOnSale();
+        setModalButtonEnabled(true);
+      } else {
+        setModalHeading("Buy Transaction Failed");
+        setModalDescription(`Failed to buy NFT. Transaction reverted.`);
+        setModalButtonEnabled(true);
+        setWalletEthBalance(await getWalletBalance(walletConnected));
+      }
 
     } catch (error) {
       console.log("Error in buy transaction : ", error);

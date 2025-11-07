@@ -31,6 +31,12 @@ function Sell() {
       let data;
       let itemList = [];
       for (let element of nfts) {
+
+        // Below code is temporary fix for static PINATA_GATEWAY_BASE_URL in smart contract
+        if (element.tokenURI.startsWith("https://harlequin-major-urial-890.mypinata.cloud/ipfs/")) {
+          element.tokenURI = element.tokenURI.replace("https://harlequin-major-urial-890.mypinata.cloud/ipfs/", "https://beige-used-manatee-520.mypinata.cloud/ipfs/");
+        }
+        // Fix end here, Remove it when smart contract updated 
         data = await getNFTDetailsFromURI(element.tokenURI);
         if (data) {
           itemList.push(setNftItem(data, element.tokenId, element.tokenURI, element.amount));

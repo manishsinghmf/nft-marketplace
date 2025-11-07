@@ -15,7 +15,7 @@ export default function Detail(props) {
   return (
     <div>
       {metadata && (
-        <div className="overlay hidden" id="popup">
+        <div className="overlay" id="popup">
           <div className="popup">
             <h2 className="text-2xl font-bold mb-4 text-center">
               NFT Metadata Details

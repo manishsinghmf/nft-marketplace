@@ -1,15 +1,19 @@
+# ---------- docker-compose.dev.yaml ----------
 version: "3.8"
 
 services:
-  app:
-    container_name: app-dev
-    image: app-dev
+  frontend:
+    container_name: nft-frontend-dev
     build:
-     context: .
-     dockerfile: Dockerfile.dev
-    volumes:
-     - ./src:/app/src
+      context: .
+      dockerfile: Dockerfile.dev
     ports:
-      - "3000:3000"
-    stdin_open: true
-    tty: true
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+    command: sh -c "npm run dev -- --host 0.0.0.0"

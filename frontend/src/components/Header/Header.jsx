@@ -1,7 +1,7 @@
 import React, { useContext, useEffect } from "react";
 import {
   Navbar,
-  MobileNav,
+  Collapse,
   Typography,
   Button,
   IconButton,
@@ -18,6 +18,7 @@ import { chainProperties, supportedChains } from "../../utils/commonUtils";
 import { ALERT, CHAIN_NOT_SUPPORTED_ERROR, METAMASK_NOT_FOUND_ERROR, USER_REQUEST_REJECT_ERROR } from "../../utils/messageConstants";
 import { nftAbi } from "../../utils/abis/fandomNftAbi";
 import { marketplaceAbi } from "../../utils/abis/marketplaceAbi";
+import { getContract } from 'viem';
 
 export default function Header() {
 
@@ -71,6 +72,7 @@ export default function Header() {
       setNetworkSelected(networkList[0].name);
       setWeb3(connectToWeb3(window.ethereum));
       const wal = await connectToMetamaskAccount();
+      console.log("Connected wallet address: ", wal);
       setWalletConnected(wal);
       setWalletEthBalance(await getWalletBalance(wal));
     }
@@ -98,10 +100,20 @@ export default function Header() {
 
   useEffect(() => {
     if (web3 && chainConfig) {
-      setNftContract(new web3.eth.Contract(nftAbi, chainConfig.nftAddress));
-      setMarketplaceContract(new web3.eth.Contract(marketplaceAbi, chainConfig.marketplaceAddress));
+      const nft = getContract({
+        address: chainConfig.nftAddress,
+        abi: nftAbi,
+        client: { wallet: web3 },
+      });
+      const marketplace = getContract({
+        address: chainConfig.marketplaceAddress,
+        abi: marketplaceAbi,
+        client: { wallet: web3 },
+      });
+      setNftContract(nft);
+      setMarketplaceContract(marketplace);
     }
-  }, [web3, setNftContract, setMarketplaceContract, chainConfig]);
+  }, [web3, chainConfig]);
 
   React.useEffect(() => {
     window.addEventListener(
@@ -267,7 +279,7 @@ export default function Header() {
             </IconButton>
           </div>
         </div>
-        <MobileNav open={openNav}>
+        <Collapse open={openNav}>
           {navList}
 
           {networkSelected && <Button variant="gradient" size="sm" fullWidth
@@ -304,7 +316,7 @@ export default function Header() {
                 <span>Connect Wallet</span>
             }
           </Button>
-        </MobileNav>
+        </Collapse>
       </Navbar>
     </>
   );

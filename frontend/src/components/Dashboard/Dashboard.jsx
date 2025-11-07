@@ -38,13 +38,20 @@ function Dashboard() {
       "Fetching your NFT's. Please hold on, it may take few seconds"
     );
     setModalButtonEnabled(false);
-
+    console.log("Fetching NFTs for user: ", walletConnected);
     const nfts = await getAllNftsOfUser(nftContract, walletConnected);
-
+    console.log("Fetched NFTs of user: ", nfts);
     if (nfts && nfts.length) {
       let data;
       let itemList = [];
       for (let element of nfts) {
+
+        // Below code is temporary fix for static PINATA_GATEWAY_BASE_URL in smart contract
+        if (element.tokenURI.startsWith("https://harlequin-major-urial-890.mypinata.cloud/ipfs/")) {
+          element.tokenURI = element.tokenURI.replace("https://harlequin-major-urial-890.mypinata.cloud/ipfs/", "https://beige-used-manatee-520.mypinata.cloud/ipfs/");
+        }
+        // Fix end here, Remove it when smart contract updated 
+
         data = await getNFTDetailsFromURI(element.tokenURI);
         if (data) {
           itemList.push(
@@ -140,10 +147,11 @@ function Dashboard() {
   }, [marketplaceContract, walletConnected, chainConfig]);
 
   const openPopup = (i) => {
+    console.log("NFT Data: ", i);
     setshowDetail(true);
     setnft_data(i);
   };
-  
+
   return (
     <div className="dashboard-create-item-containers">
       {item.length > 0 && isChainSupported && walletConnected && (
