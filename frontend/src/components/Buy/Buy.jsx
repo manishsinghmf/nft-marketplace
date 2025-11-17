@@ -1,250 +1,215 @@
+// src/components/Buy/Buy.jsx
 import "./Buy.css";
+import { useEffect, useState } from "react";
+
 import NoItem from "../NoItem/NoItem";
-import { MyContext } from "../App/App";
-import { useContext, useEffect, useState } from "react";
-import { convertToEther, convertToWei, getAllUnsoldNfts, getWalletBalance } from "../../utils/wallet";
-import { getNFTDetailsFromURI } from "../../utils/metaDataFormat";
 import Detail from "../Detail/Detail";
-import { SUCCESSFUL_TRANSACTION, TRANSACTION_HASH } from "../../utils/messageConstants";
-import { publicClient, walletClient } from "../../utils/clients";
 
-function Buy() {
+import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { ContractService } from "../../services/contractService";
+import { estimateTotalGasCost } from "../../services/gasService";
+import { BalanceService } from "../../services/balanceService";
+import { useModalStore } from "../../store/modalStore";
 
-  const [showDetail, setshowDetail] = useState(false);
-  const [nft_data, setnft_data] = useState(null);
-  const [item, setItem] = useState([]);
+import { CONTRACTS } from "../../config/contracts";
+import { CONTRACT_FUNCTIONS } from "../../config/contractFunctions";
 
-  /** Importing context API's states to use in the component*/
-  const {
-    web3, walletConnected, isChainSupported, setIsModalOpen, setModalHeading,
-    nftContract, marketplaceContract, setModalDescription, setModalButtonEnabled,
-    setWalletEthBalance, walletEthBalance, chainConfig
-  } = useContext(MyContext);
+export default function Buy() {
+  const [items, setItems] = useState([]);
+  const [showDetail, setShowDetail] = useState(false);
+  const [nftData, setNftData] = useState(null);
 
-  const fetchAllNftsOnSale = async () => {
+  const { address, isConnected, chainId } = useAccount();
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
 
-    setIsModalOpen(true);
-    setModalHeading("Fetching NFT's on Sale");
-    setModalDescription("Fetching all the NFT's that are on sale. Please hold on, it may take few seconds");
-    setModalButtonEnabled(false);
+  const { openModal, setModal, closeModal } = useModalStore();
 
-    const nfts = await getAllUnsoldNfts(marketplaceContract);
+  const chainConfig = CONTRACTS[chainId];
+  const currency = chainConfig?.name || "ETH";
 
-    if (nfts && nfts.length) {
+  /** --------------------------------------------------------
+   * Load all market items using new ContractService
+   -------------------------------------------------------- */
+  const loadItemsForSale = async () => {
+    if (!isConnected || !publicClient || !chainId) return;
 
-      let data;
-      let itemList = [];
-
-      if (nfts && nfts.length) {
-        for (let element of nfts) {
-          // Remove the NFT's whose owner is current connected account
-          if ((element.seller).toLowerCase() != (walletConnected).toLowerCase()) {
-
-
-            // Below code is temporary fix for static PINATA_GATEWAY_BASE_URL in smart contract
-            if (element.uri.startsWith("https://harlequin-major-urial-890.mypinata.cloud/ipfs/")) {
-              element.uri = element.uri.replace("https://harlequin-major-urial-890.mypinata.cloud/ipfs/", "https://beige-used-manatee-520.mypinata.cloud/ipfs/");
-            }
-            // Fix end here, Remove it when smart contract updated 
-
-
-            data = await getNFTDetailsFromURI(element.uri);
-            if (data) {
-              itemList.push(setNftItem(data, element));
-            }
-          }
-          setItem(itemList);
-          console.log("item list: ", itemList);
-        }
-      } else {
-        setItem([]);
-      }
-
-      setIsModalOpen(false);
-    } else {
-      setItem([]);
-    }
-    setIsModalOpen(false);
-
-  }
-
-  const setNftItem = (data, element) => {
-    return {
-      image: data.image,
-      name: data.name,
-      description: data.description,
-      nftId: element.tokenId,
-      uri: element.uri,
-      amount: element.units,
-      attributes: data.attributes,
-      itemId: element.itemId,
-      price: convertToEther(element.price, 18)
-    }
-  }
-
-  /** Handles confirmation of user for buying NFT */
-  const buy = async (selectedNft) => {
-
-    setIsModalOpen(true);
-    setModalHeading("Buy Transaction");
-    setModalDescription("Your buy transacion is in progress, Please wait as it can take some time to complete due to heavy traffic on network!")
-    setModalButtonEnabled(false);
-
-    const priceInWei = convertToWei(selectedNft.price.toString(), 18);
-    const itemId = selectedNft.itemId;
-
-    const check = await checkUserHasSufficientBalanceForTx(itemId, priceInWei);
-
-    if (!check.status) {
-      setModalHeading("Buy Transaction Failed");
-      setModalDescription(`Transaction failed because your account doesn't have sufficient balance to pay ${nft_data.price} ${chainConfig.currency} and gas fees!`);
-      setModalButtonEnabled(true);
-      setIsModalOpen(true);
-      return;
-    }
-
-    await buyTransaction(itemId, priceInWei, check.gas);
-
-  };
-
-  /** Checks user has sufficient balance to put NFT on sale or not */
-  const checkUserHasSufficientBalanceForTx = async (itemId, priceInWei) => {
+    openModal("Loading...", "Fetching NFTs on sale. Please wait...");
 
     try {
-
-      const gasEstimate = await publicClient.estimateContractGas({
-        address: marketplaceContract.options.address,
-        abi: marketplaceContract.options.jsonInterface,
-        functionName: "buy",
-        args: [itemId],
-        account: walletConnected,
-        value: BigInt(priceInWei)
+      // ✔ Correct unified metadata fetch
+      const list = await ContractService.fetchAndResolveNFTs({
+        source: "marketplace",
+        chainId,
+        publicClient,
       });
 
-      const bufferedGasLimit = Math.round(
-        Number(gasLimit) + (Number(gasEstimate) * Number(0.2))
+      // list structure: { nftId, price, image, name, uri, raw }
+      // seller is inside raw.seller → flatten manually
+      const mapped = list.map((item) => ({
+        ...item,
+        seller: item.raw?.seller,
+      }));
+
+      // remove owned NFTs
+      const filtered = mapped.filter(
+        (item) =>
+          item.seller?.toLowerCase() !== address?.toLowerCase()
       );
 
-      const currentGasPrice = await publicClient.getGasPrice();
-      const txFee = (Number(currentGasPrice) * bufferedGasLimit) + Number(priceInWei);
-      const feeInEth = convertToEther(txFee.toString(), 18);
-
-      if (Number(walletEthBalance) < Number(feeInEth)) {
-        return { gas: bufferedGasLimit, status: false };
-      } else {
-        return { gas: bufferedGasLimit, status: true };
-      }
-
-    } catch (error) {
-      console.log("Error in estimating transaction fee : ", error);
-      return { gas: 0, status: false };
+      setItems(filtered || []);
+    } catch (err) {
+      console.error("❌ loadItemsForSale error:", err);
+      setItems([]);
+      setModal("Error", "Failed to load NFT marketplace items.", true);
+    } finally {
+      closeModal();
     }
-
-  }
-
-  /** Execute NFT buy function in NFT marketplace smart contract */
-  const buyTransaction = async (itemId, priceInWei, gas) => {
-    try {
-
-      const hash = await walletClient.writeContract({
-        address: marketplaceContract.options.address,
-        abi: marketplaceContract.abi,
-        functionName: "buy",
-        args: [itemId],
-        account: walletConnected,
-        value: BigInt(priceInWei),
-        gasLimit: BigInt(gas)
-      });
-
-      const url = chainConfig.explorerUrl + hash;
-      setModalDescription(`${TRANSACTION_HASH} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status) {
-        setModalDescription(`${SUCCESSFUL_TRANSACTION} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-        setWalletEthBalance(await getWalletBalance(walletConnected));
-        await fetchAllNftsOnSale();
-        setModalButtonEnabled(true);
-      } else {
-        setModalHeading("Buy Transaction Failed");
-        setModalDescription(`Failed to buy NFT. Transaction reverted.`);
-        setModalButtonEnabled(true);
-        setWalletEthBalance(await getWalletBalance(walletConnected));
-      }
-
-    } catch (error) {
-      console.log("Error in buy transaction : ", error);
-      setModalHeading("Buy Transaction Failed");
-      setModalDescription(`Failed to buy NFT. ${error.message}`);
-      setModalButtonEnabled(true);
-    }
-  }
-
-  const openPopup = (i) => {
-    setshowDetail(true);
-    setnft_data(i);
   };
 
   useEffect(() => {
-    if (nftContract && walletConnected && marketplaceContract) {
-      fetchAllNftsOnSale();
-    } else {
-      setItem([]);
-    }
+    if (isConnected && chainConfig) loadItemsForSale();
+    else setItems([]);
+  }, [isConnected, chainId]);
 
-  }, [nftContract, marketplaceContract, walletConnected, chainConfig]);
+  /** --------------------------------------------------------
+   * BUY NFT
+   -------------------------------------------------------- */
+  const buy = async (selectedNft) => {
+    if (!walletClient || !publicClient) return;
+
+    console.log("address", address, "selectedNFT", selectedNft)
+
+    openModal("Preparing Transaction", "Estimating gas...", false);
+
+    try {
+      const priceWei = BigInt(Math.floor(selectedNft.price * 1e18));
+
+      /** Gas Estimate */
+      const gasInfo = await estimateTotalGasCost({
+        chainId,
+        contractName: "marketplace",
+        functionName: CONTRACT_FUNCTIONS.MARKETPLACE.BUY,
+        args: [selectedNft.nftId],
+        publicClient,
+        account: address,
+        value: priceWei
+      });
+
+      const userBalance = await publicClient.getBalance({ address });
+
+      if (
+        !BalanceService.hasEnoughBalance({
+          userBalanceWei: userBalance,
+          requiredWei: gasInfo.requiredWei,
+        })
+      ) {
+        return setModal(
+          "Insufficient Balance",
+          `You need at least ${gasInfo.requiredEth.toFixed(5)} ${currency} to buy this NFT.`,
+          true
+        );
+      }
+
+      setModal("Confirm Purchase", "Please confirm in your wallet...", false);
+
+      /** BUY Transaction */
+      const { tx } = await ContractService.buyMarketItem({
+        chainId,
+        itemId: selectedNft.nftId, // 🔥 Fix: use nftId, not itemId (your contract passes tokenId)
+        value: priceWei,
+        walletClient,
+      });
+
+      setModal(
+        "Transaction Sent",
+        `View on explorer: <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`
+      );
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
+
+      if (receipt.status === "success") {
+        setModal(
+          "Success",
+          `NFT purchased! <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`,
+          true
+        );
+
+        loadItemsForSale();
+      } else {
+        setModal("Failed", "The transaction was reverted.", true);
+      }
+    } catch (err) {
+      console.error("❌ BUY error:", err);
+      setModal("Error", err.message || "Transaction failed.", true);
+    }
+  };
+
+  /** --------------------------------------------------------
+   * DETAILS POPUP
+   -------------------------------------------------------- */
+  const openPopup = (nft) => {
+    setNftData(nft);
+    setShowDetail(true);
+  };
+
+  /** --------------------------------------------------------
+   * UI Rendering
+   -------------------------------------------------------- */
+  if (!items.length || !isConnected) {
+    return (
+      <NoItem
+        heading="No NFTs Available"
+        content="There are currently no NFTs listed for sale."
+      />
+    );
+  }
 
   return (
-    <div>
-      {(item.length > 0 && walletConnected && isChainSupported) ? (
-        <div className="buy-page">
-          <div className="buy-container mx-auto px-4 pb-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 p-12">
-              {item.length > 0 &&
-                item.map((i) => {
-                  return (
-                    <div className="max-w-sm rounded overflow-hidden shadow-lg buy-card" key={i.nftId}>
-                      <img src={i.image} alt="#" className="w-full" />
-                      <div className="px-6 py-4 ">
-                        <h5 className="font-bold text-xl mb-2">{i.name}</h5>
-                        <p className="text-white-700 text-base">
-                          {i.description}
-                        </p>
-                        <p className="text-[gold] font-extrabold text-base">
-                          Price: {i.price} {chainConfig ? chainConfig.currency : ""}
-                        </p>
-                        <span className="icon">
-                          <a
-                            className="text-[#0000EE] underline cursor-pointer text-sm"
-                            onClick={() => openPopup(i)}
-                          >
-                            more details
-                          </a>
-                        </span>
-                      </div>
-                      <div className="px-6 pb-4">
-                        <button className="bg-blue-500 hover:bg-blue-700 text-white  py-2 px-4 rounded buy-sc-button"
-                          onClick={() => buy(i)}
-                        >
-                          Buy
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+    <div className="buy-page">
+      <div className="buy-container mx-auto px-4 pb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 p-12">
+          {items.map((i) => (
+            <div
+              className="max-w-sm rounded overflow-hidden shadow-lg buy-card"
+              key={i.nftId}
+            >
+              <img src={i.image} alt="#" className="w-full" />
+
+              <div className="px-6 py-4">
+                <h5 className="font-bold text-xl mb-2">{i.name}</h5>
+                <p className="text-white-700 text-base">{i.description}</p>
+
+                <p className="text-[gold] font-extrabold text-base">
+                  Price: {i.price} {currency}
+                </p>
+
+                <span className="icon">
+                  <a
+                    className="text-[#0000EE] underline cursor-pointer text-sm"
+                    onClick={() => openPopup(i)}
+                  >
+                    more details
+                  </a>
+                </span>
+              </div>
+
+              <div className="px-6 pb-4">
+                <button
+                  className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded buy-sc-button"
+                  onClick={() => buy(i)}
+                >
+                  Buy
+                </button>
+              </div>
             </div>
-          </div>
-          {showDetail && (
-            <Detail setshowDetail={setshowDetail} nft_data={nft_data} />
-          )}
+          ))}
         </div>
-      ) : (
-        <NoItem heading={"No NFT's found for sell"}
-          content={"There is no NFT available right not for sale that you can purchase. Please hold on for some one to put NFT's on sale!"}
-        />
+      </div>
+
+      {showDetail && (
+        <Detail setshowDetail={setShowDetail} nft_data={nftData} />
       )}
     </div>
   );
 }
-
-export default Buy;

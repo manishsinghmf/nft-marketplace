@@ -1,303 +1,233 @@
+// src/components/PriceModal/PriceModal.jsx
 import "./PriceModal.css";
-import { useContext, useState } from "react";
-import { REGEX_FOR_PRICE } from "../../utils/commonUtils";
-import { MyContext } from "../App/App";
-import { convertToEther, convertToWei, getWalletBalance } from "../../utils/wallet";
-import { ALERT, SUCCESSFUL_TRANSACTION, TRANSACTION_HASH } from "../../utils/messageConstants";
-import { publicClient, walletClient } from "../../utils/clients";
-export default function PriceModal(props) {
+import { useState } from "react";
 
-    /** Stores new price of NFT to be sold */
-    const [price, setPrice] = useState(0);
+import { useAccount, useBalance, usePublicClient, useWalletClient } from "wagmi";
+import { parseEther } from "viem";
 
-    /** Importing context API's states to use in the component*/
-    const {
-        web3, walletConnected, setIsModalOpen, setModalHeading, walletEthBalance, nftContract,
-        setWalletEthBalance, marketplaceContract, setModalDescription, setModalButtonEnabled,
-        chainConfig
-    } = useContext(MyContext);
+import { CONTRACTS } from "../../config/contracts";
+import { CONTRACT_FUNCTIONS } from "../../config/contractFunctions";
+
+import { useModalStore } from "../../store/modalStore";
+
+import { ContractService } from "../../services/contractService";
+import { estimateTotalGasCost } from "../../services/gasService";
+import { BalanceService } from "../../services/balanceService";
+
+export default function PriceModal({
+    setShowPricePopup,
+    nftData,
+    listingFee,
+    refetchNFTs,
+}) {
+    const [price, setPrice] = useState("");
+
+    const { address, chainId } = useAccount();
+    const publicClient = usePublicClient();
+    const { data: walletClient } = useWalletClient();
+
+    const { data: balanceData } = useBalance({ address });
+
+    const { openModal, setModal, closeModal } = useModalStore();
+
+    const chainConfig = CONTRACTS[chainId];
+    const currency = chainConfig?.name || "ETH";
 
     const handleCancel = () => {
-        setPrice(0);
-        props.setShowPricePopup(false);
+        setShowPricePopup(false);
+        setPrice("");
     };
 
-    const handleChange = (e) => {
-        const { value } = e.target;
-        const check = new RegExp(REGEX_FOR_PRICE).test(value);
-        if (check) {
-            setPrice(value);
-        }
+    const handlePriceInput = (e) => {
+        const val = e.target.value;
+        if (/^\d*\.?\d*$/.test(val)) setPrice(val);
     };
 
-    /** Handles confirmation of user for selling NFT */
+    /** -----------------------------------------------------
+     * CONFIRM SELL LISTING
+     ------------------------------------------------------ */
     const handleConfirm = async () => {
-
-        const newPrice = Number(price);
-
-        if (newPrice) {
-
-            props.setShowPricePopup(false);
-            setPrice(0);
-
-            if (newPrice < Number(props.listPrice)) {
-                setIsModalOpen(true);
-                setModalHeading("Sell Transaction");
-                setModalDescription(`The selling price of NFT can't be less than listing price that is ${props.listPrice} ${chainConfig.currency}. Please try with greater amount!`);
-                setModalButtonEnabled(true);
-                return;
-            }
-
-            setIsModalOpen(true);
-            setModalHeading("Approval Transaction");
-            setModalDescription("Your sell transacion is in progress, Please wait as it can take some time to complete due to heavy traffic on network!")
-            setModalButtonEnabled(false);
-
-            const priceInWei = convertToWei(newPrice.toString(), 18);
-            const tokenId = props.nftData.nftId;
-            const amount = props.nftData.amount;
-
-            await approvalTransaction(tokenId, priceInWei, amount);
-
-        } else {
-            props.setShowPricePopup(false);
-            setPrice(0);
-            setIsModalOpen(true);
-            setModalHeading(ALERT);
-            setModalDescription("Invalid price! Please enter correct value for NFT sell price");
-            setModalButtonEnabled(true);
-        }
-    };
-
-    /** Checks user has sufficient balance to put NFT on sale or not */
-    const checkUserHasSufficientBalanceForTx = async (tokenId, price, amount, listingPriceInWei) => {
-        try {
-            const gasLimit = await publicClient.estimateContractGas({
-                address: marketplaceContract.address,
-                abi: marketplaceContract.abi,
-                functionName: "createMarketItem",
-                args: [tokenId, price, amount],
-                account: walletConnected,
-                value: BigInt(listingPriceInWei),
-            });
-
-            const bufferedGasLimit = Math.round(
-                Number(gasLimit) + (Number(gasLimit) * Number(0.2))
+        if (!chainConfig) {
+            return openModal(
+                "Unsupported Network",
+                "Please switch to a supported chain.",
+                true
             );
-
-            const currentGasPrice = await publicClient.getGasPrice();
-            const txFee = (Number(currentGasPrice) * bufferedGasLimit) + Number(listingPriceInWei);
-            const feeInEth = convertToEther(txFee.toString(), 18);
-
-            console.log("walletEthBalance:", walletEthBalance, " feeInEth:", feeInEth);
-            if (Number(walletEthBalance) < Number(feeInEth)) {
-                return { gas: bufferedGasLimit, status: false };
-            } else {
-                return { gas: bufferedGasLimit, status: true };
-            }
-
-        } catch (error) {
-            console.log("Error in estimating transaction fee: ", error);
-            return { gas: 0, status: false };
         }
 
-    }
-
-    /** Checks user has sufficient balance to give approval to contract or not */
-    const checkUserHasSufficientBalanceForApproval = async () => {
-        try {
-            const gasLimit = await publicClient.estimateContractGas({
-                address: nftContract.address,
-                abi: nftContract.abi,
-                functionName: "setApprovalForAll",
-                args: [chainConfig.marketplaceAddress, true],
-                account: walletConnected,
-            });
-            const bufferedGasLimit = Math.round(
-                Number(gasLimit) + (Number(gasLimit) * Number(0.2))
+        const numericPrice = Number(price);
+        if (!numericPrice || numericPrice <= 0) {
+            return openModal(
+                "Invalid Price",
+                "Price must be greater than 0.",
+                true
             );
-
-            const currentGasPrice = await publicClient.getGasPrice();
-            const txFee = (currentGasPrice * BigInt(bufferedGasLimit));
-            const feeInEth = convertToEther(txFee.toString(), 18);
-            if (Number(walletEthBalance) < Number(feeInEth)) {
-                return { gas: bufferedGasLimit, status: false };
-            } else {
-                return { gas: bufferedGasLimit, status: true };
-            }
-
-        } catch (error) {
-            console.log("Error in estimating transaction fee: ", error);
-            return { gas: 0, status: false };
         }
 
-    }
-
-    /** Execute NFT list function in NFT marketplace smart contract */
-    const sellTransaction = async (tokenId, price, amount, gas, listingPriceInWei) => {
-        try {
-            const hash = walletClient.writeContract({
-                address: marketplaceContract.address,
-                abi: marketplaceContract.abi,
-                functionName: "createMarketItem",
-                args: [tokenId, price, amount],
-                account: walletConnected,
-                gasLimit: BigInt(gas),
-                value: BigInt(listingPriceInWei),
-            });
-
-            const url = chainConfig.explorerUrl + hash;
-            setModalDescription(`${TRANSACTION_HASH} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-            console.log("Sell transaction hash: ", hash);
-            const receipt = await publicClient.waitForTransactionReceipt({ hash });
-            console.log("Sell transaction receipt: ", receipt);
-            if (receipt.status) {
-                setModalDescription(`${SUCCESSFUL_TRANSACTION} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-                setWalletEthBalance(await getWalletBalance(walletConnected));
-                const fetchNftsFromIpfs = props.setNftItem;
-                await fetchNftsFromIpfs();
-                setModalButtonEnabled(true);
-            } else {
-                setModalHeading("Sell Transaction Failed");
-                setModalDescription(`Failed to put NFT on sale. Transaction was reverted.`);
-                setModalButtonEnabled(true);
-                setWalletEthBalance(await getWalletBalance(walletConnected));
-            }
-
-        } catch (error) {
-            console.log("Error in sell transaction : ", error);
-            setModalHeading("Sell Transaction Failed");
-            setModalDescription(`Failed to put NFT on sale. ${error.message}`);
-            setModalButtonEnabled(true);
+        if (numericPrice < Number(listingFee)) {
+            return openModal(
+                "Invalid Price",
+                `Price cannot be lower than listing fee (${listingFee} ${currency}).`,
+                true
+            );
         }
-    }
 
-    /** Executes approval transaction from user to contract*/
-    const approvalTransaction = async (tokenId, priceInWei, amount) => {
+        // Close modal UI
+        setShowPricePopup(false);
+
+        /** Step 1 — Show initial modal */
+        openModal(
+            "Preparing Sell Transaction",
+            "Checking approval, estimating gas...",
+            false
+        );
 
         try {
-            const check = await publicClient.readContract({
-                address: nftContract.address,
-                abi: nftContract.abi,
-                functionName: "isApprovedForAll",
-                args: [walletConnected, chainConfig.marketplaceAddress],
-                account: walletConnected,
+            const priceWei = parseEther(price);
+            const listingFeeWei = parseEther(String(listingFee));
+
+            /* ---------------------------------------------
+             * STEP 1 — APPROVAL (ERC-1155)
+             --------------------------------------------- */
+            const isApproved = await ContractService.checkApproval({
+                chainId,
+                owner: address,
+                operator: chainConfig.marketplace.address,
+                publicClient,
+                account: address
             });
 
-            if (check) {
-                setModalHeading("Sell Transaction");
-                await executeFinalTransaction(tokenId, priceInWei, amount);
-            } else {
+            if (!isApproved) {
+                setModal(
+                    "Approval Required",
+                    "Confirm approval in your wallet...",
+                    false
+                );
 
-                const check = await checkUserHasSufficientBalanceForApproval();
-
-                if (!check.status) {
-                    setModalHeading("Approval Transaction Failed");
-                    setModalDescription(`Transaction failed because your account doesn't have sufficient balance to pay gas fees!`);
-                    setModalButtonEnabled(true);
-                    setIsModalOpen(true);
-                    return;
-                }
-
-                setModalHeading("Approval Transaction");
-                setModalDescription("Please confirm the approval transaction in MetaMask...");
-                setIsModalOpen(true);
-                setModalButtonEnabled(false);
-
-                const hash = await walletClient.writeContract({
-                    address: nftContract.address,
-                    abi: nftContract.abi,
-                    functionName: "setApprovalForAll",
-                    args: [chainConfig.marketplaceAddress, true],
-                    account: walletConnected,
-                    gasLimit: BigInt(check.gas),
+                const approvalTx = await ContractService.approveAll({
+                    chainId,
+                    operator: chainConfig.marketplaceAddress,
+                    walletClient: publicClient, // walletClient auto used inside write function
                 });
 
-                const url = chainConfig.explorerUrl + hash;
-                setModalDescription(`${TRANSACTION_HASH} <a class="text-indigo-500" target="_blank" href="${url}">${url}</a>`);
-
-                const receipt = await publicClient.waitForTransactionReceipt({ hash });
-                if (receipt.status) {
-                    setModalHeading("Sell Transaction");
-                    setModalDescription(`Please confirm the sell transaction in MetaMask...`);
-                    setWalletEthBalance(await getWalletBalance(walletConnected));
-                    await executeFinalTransaction(tokenId, priceInWei, amount);
-                } else {
-                    setModalHeading("Approval Transaction Failed");
-                    setModalDescription(`Failed to put NFT on sale. Transaction was reverted.`);
-                    setModalButtonEnabled(true);
-                    setWalletEthBalance(await getWalletBalance(walletConnected));
-                }
+                await publicClient.waitForTransactionReceipt({ hash: approvalTx });
             }
-        } catch (error) {
-            console.log("error in catch : ", error);
-            setModalHeading("Approval Transaction Failed");
-            setModalDescription(`Failed to put NFT on sale. ${error.message}`);
-            setModalButtonEnabled(true);
-            return;
+
+            /* ---------------------------------------------
+             * STEP 2 — GAS ESTIMATION
+             --------------------------------------------- */
+            const gasInfo = await estimateTotalGasCost({
+                chainId,
+                contractName: "marketplace",
+                functionName: CONTRACT_FUNCTIONS.MARKETPLACE.CREATE_ITEM,
+                args: [nftData.nftId, priceWei, nftData.amount],
+                publicClient,
+                account: address,
+                value: listingFeeWei,
+            });
+
+            /* ---------------------------------------------
+             * STEP 3 — BALANCE CHECK
+             --------------------------------------------- */
+            const userBalance = balanceData?.value || 0n;
+
+            if (
+                !BalanceService.hasEnoughBalance({
+                    userBalanceWei: userBalance,
+                    requiredWei: gasInfo.requiredWei,
+                })
+            ) {
+                return setModal(
+                    "Insufficient Balance",
+                    `You need approx ${gasInfo.requiredEth.toFixed(
+                        5
+                    )} ${currency} to list this NFT.`,
+                    true
+                );
+            }
+
+            /* ---------------------------------------------
+             * STEP 4 — SUBMIT LISTING
+             --------------------------------------------- */
+            setModal("Listing NFT", "Submitting transaction...", false);
+
+            const { tx } = await ContractService.createMarketItem({
+                chainId,
+                nftId: nftData.nftId,
+                priceWei,
+                amount: nftData.amount,
+                listingFeeWei,
+                walletClient: walletClient,
+            });
+
+            const explorerUrl = chainConfig.explorerUrl + tx;
+
+            setModal(
+                "Transaction Sent",
+                `View on explorer: <a href="${explorerUrl}" target="_blank">${tx}</a>`
+            );
+
+            /* ---------------------------------------------
+             * STEP 5 — WAIT FOR RECEIPT
+             --------------------------------------------- */
+            const receipt = await publicClient.waitForTransactionReceipt({
+                hash: tx,
+            });
+
+            if (receipt.status === "success") {
+                setModal(
+                    "NFT Listed Successfully!",
+                    `View: <a href="${explorerUrl}" target="_blank">${tx}</a>`,
+                    true
+                );
+                await refetchNFTs?.();
+            } else {
+                setModal("Failed", "The transaction was reverted.", true);
+            }
+        } catch (err) {
+            console.error("Sell Error:", err);
+            setModal(
+                "Sell Transaction Failed",
+                err.message || "Unexpected error occurred",
+                true
+            );
         }
-    }
-
-    /** Executes sell transaction after approval */
-    const executeFinalTransaction = async (tokenId, priceInWei, amount) => {
-
-        const listingPriceInWei = convertToWei(props.listPrice, 18);
-        const balanceCheck = await checkUserHasSufficientBalanceForTx(tokenId, priceInWei, amount, listingPriceInWei);
-
-        if (!balanceCheck.status) {
-            setModalHeading("Sell Transaction Failed");
-            setModalDescription(`Transaction failed because your account doesn't have sufficient balance!`);
-            setModalButtonEnabled(true);
-            setIsModalOpen(true);
-            return;
-        }
-
-        await sellTransaction(tokenId, priceInWei, amount, balanceCheck.gas, listingPriceInWei);
-
-    }
+    };
 
     return (
-        <div>
-            <div className="price-overlay" id="popup">
-                <div className="price-popup">
-                    <h2 className="text-2xl font-bold mb-4 text-center">
-                        Sell Confirmation
-                    </h2>
-                    <hr />
-                    <div className="mb-4 price-param text-center">
-                        <br />
-                        <span>
-                            NFT Price ( in {chainConfig ? chainConfig.currency : ""} )
-                        </span>
-                        <br />
-                        <br />
-                        <input
-                            type="number"
-                            className="form-control price-input"
-                            placeholder="Enter sell price in matic"
-                            name="price"
-                            value={price}
-                            onChange={handleChange}
-                        />
-                    </div>
-                    <div className="flex justify-center">
-                        <div className="pr-4">
-                            <button
-                                className="bg-green-600 hover:bg-green-800 text-white  py-2 px-4 rounded price-button"
-                                onClick={handleConfirm}
-                            >
-                                Confirm
-                            </button>
-                        </div>
-                        <div className="pl-4">
-                            <button
-                                className="bg-red-600 hover:bg-red-800 text-white  py-2 px-4 rounded price-button"
-                                onClick={handleCancel}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
+        <div className="price-overlay">
+            <div className="price-popup">
+                <h2 className="text-2xl font-bold mb-4 text-center">
+                    Sell NFT
+                </h2>
+                <hr />
+
+                <div className="mb-4 price-param text-center mt-4">
+                    <span>Enter Price (in {currency})</span>
+                    <br />
+                    <input
+                        type="number"
+                        className="form-control price-input mt-3"
+                        placeholder={`Enter price in ${currency}`}
+                        value={price}
+                        onChange={handlePriceInput}
+                    />
+                </div>
+
+                <div className="flex justify-center gap-4 mt-6">
+                    <button
+                        className="bg-green-600 hover:bg-green-800 text-white py-2 px-4 rounded"
+                        onClick={handleConfirm}
+                    >
+                        Confirm
+                    </button>
+
+                    <button
+                        className="bg-red-600 hover:bg-red-800 text-white py-2 px-4 rounded"
+                        onClick={handleCancel}
+                    >
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>

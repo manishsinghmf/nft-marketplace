@@ -1,14 +1,15 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './components/App/App'
-import { RouterProvider } from "react-router-dom"
-import router from "./routes"
-import './index.css'
+// src/main.jsx
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { RouterProvider } from "react-router-dom";
+import { Web3Providers } from "./providers/wagmiProvider";
+import router from "./routes"; // 👈 your new router.jsx
+import "./index.css";
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router}>
-      <App />
-    </RouterProvider>
-  </React.StrictMode>,
-)
+    <Web3Providers>
+      <RouterProvider router={router} />
+    </Web3Providers>
+  </React.StrictMode>
+);

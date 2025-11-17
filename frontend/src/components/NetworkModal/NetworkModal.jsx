@@ -1,76 +1,90 @@
+// src/components/NetworkModal/NetworkModal.jsx
+import React from "react";
 import "./NetworkModal.css";
-import { connectToMetamaskAccount, connectToSpecificMetamaskNetwork, connectToWeb3, getWalletBalance } from "../../utils/wallet";
-import { ALERT, USER_REQUEST_REJECT_ERROR } from "../../utils/messageConstants";
-import { chainProperties } from "../../utils/commonUtils";
 
-const NetworkModal = ({ setIsNetworkModalOpen, data, setModalHeading,
-    setModalDescription, setModalButtonEnabled, setIsModalOpen, setNetworkSelected,
-    setWalletEthBalance, setChainConfig, setWalletConnected,
-    setIsChainSupported, walletConnected, setWeb3 }) => {
+import { useSwitchChain, useAccount, useChainId } from "wagmi";
+import { supportedChains } from "../../config/chains";
 
-    const chooseNetwork = async (e) => {
-        const check = await connectToSpecificMetamaskNetwork(e.id);
-        if (check) {
-            setNetworkSelected(e.name);
-            setChainConfig(chainProperties[e.id]);
-            if (!walletConnected) {
-                setWeb3(connectToWeb3(window.ethereum));
-                const wal = await connectToMetamaskAccount();
-                if (!wal) {
-                    setError();
-                } else {
-                    setWalletConnected(wal);
-                    setWalletEthBalance(await getWalletBalance(wal));
-                    setIsChainSupported(true);
-                }
+import { useModalStore } from "../../store/modalStore";
+
+export default function NetworkModal({ setIsNetworkModalOpen }) {
+    const close = () => setIsNetworkModalOpen(false);
+
+    const { switchChain, isPending } = useSwitchChain();
+    const { isConnected } = useAccount();
+    const currentChainId = useChainId();
+
+    const openModal = useModalStore((s) => s.openModal);
+
+    const chooseNetwork = async (chain) => {
+        try {
+            if (!isConnected) {
+                openModal({
+                    heading: "Wallet Not Connected",
+                    description: "Please connect your wallet first.",
+                    buttonEnabled: true,
+                });
+                close();
+                return;
             }
-        } else {
-            setError();
-        }
-        setIsNetworkModalOpen(false);
-    }
 
-    const setError = () => {
-        setWalletEthBalance("0");
-        setModalHeading(ALERT);
-        setModalDescription(USER_REQUEST_REJECT_ERROR);
-        setModalButtonEnabled(true);
-        setIsModalOpen(true);
-        setNetworkSelected(null);
-        setChainConfig(null);
-        setWalletConnected(null);
-    }
+            switchChain({ chainId: chain.id });
+            close();
+
+        } catch (err) {
+            console.error("Network switch error:", err);
+
+            openModal({
+                heading: "Network Switch Failed",
+                description: err?.message || "Could not switch network.",
+                buttonEnabled: true,
+            });
+
+            close();
+        }
+    };
 
     return (
         <>
-            <div className="network-darkBG" onClick={() => setIsNetworkModalOpen(false)} />
+            <div className="network-darkBG" onClick={close} />
+
             <div className="network-centered">
                 <div className="network-modal">
+
                     <div className="network-modalHeader">
-                        <h3 className="network-heading">Please select a network</h3>
+                        <h3 className="network-heading">Select Network</h3>
                     </div>
-                    <button className="network-closeBtn" onClick={() => setIsNetworkModalOpen(false)}>
+
+                    <button className="network-closeBtn" onClick={close}>
                         X
                     </button>
+
                     <hr />
 
-                    <div className="w-full network-modalContent inset-y-1/2 bottom-4">
-                        {
-                            data.length > 0 && data.map((item) => {
-                                return (
-                                    <div className="network-name"
-                                        key={item.id}
-                                        onClick={() => chooseNetwork(item)}>
-                                        {item.name}
-                                    </div>
-                                )
-                            })
-                        }
+                    <div className="network-modalContent">
+                        {supportedChains.map((chain) => {
+                            const isActive = currentChainId === chain.id;
+
+                            return (
+                                <div
+                                    key={chain.id}
+                                    className={`network-name ${isActive ? "active-network" : ""}`}
+                                    onClick={() => chooseNetwork(chain)}
+                                >
+                                    {chain.name} {isActive ? "(Active)" : ""}
+                                </div>
+                            );
+                        })}
                     </div>
+
+                    {isPending && (
+                        <p className="text-center text-sm text-gray-400 mt-3">
+                            Switching network...
+                        </p>
+                    )}
+
                 </div>
             </div>
         </>
     );
-};
-
-export default NetworkModal;
+}

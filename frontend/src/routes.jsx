@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import App from "./components/App/App";
 import Buy from "./components/Buy/Buy";
-import Dashboard from "./components/Dashboard/Dashboard";
+import MyCollection from "./components/MyCollection/MyCollection";
 import Error from "./components/Error/Error";
 import Home from "./components/Home/Home";
 import Mint from "./components/Mint/Mint";
@@ -18,8 +18,8 @@ const router = createBrowserRouter([
                 element: <Home />,
             },
             {
-                path: "/dashboard",
-                element: <Dashboard />,
+                path: "/my-collection",
+                element: <MyCollection />,
             },
             {
                 path: "/mint",

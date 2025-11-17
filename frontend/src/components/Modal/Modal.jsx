@@ -1,51 +1,77 @@
+// src/components/Modal/Modal.jsx
+
 import React from "react";
 import "./Modal.css";
 import RingLoader from "react-spinners/RingLoader";
+import { useModalStore } from "../../store/modalStore";
 
-const Modal = ({ setIsModalOpen, heading, description, isButtonEnabled }) => {
+export default function Modal() {
+  const {
+    modal: { open, heading, description, buttonEnabled, actionText, onAction },
+    closeModal,
+  } = useModalStore();
+
+  if (!open) return null;
+
+  const handleBackgroundClick = () => closeModal();
+
+  const handleButtonClick = () => {
+    if (typeof onAction === "function") onAction();
+    closeModal();
+  };
+
   return (
     <>
-      <div className="darkBG" onClick={() => setIsModalOpen(false)} />
+      <div className="darkBG" onClick={handleBackgroundClick} />
+
       <div className="centered">
         <div className="modal">
+
           <div className="modalHeader">
             <h3 className="heading">{heading}</h3>
           </div>
-          <button className="closeBtn" onClick={() => setIsModalOpen(false)}>
+
+          <button className="closeBtn" onClick={closeModal}>
             X
           </button>
+
           <hr />
-          {!isButtonEnabled ?
+
+          {!buttonEnabled && (
             <div className="py-8 inline-block w-full text-center">
               <RingLoader
                 color={"rgba(54, 215, 183, 1)"}
                 loading={true}
                 size={40}
-                aria-label="Loading Spinner"
-                data-testid="loader"
               />
-            </div> :
-            <></>
-          }
+            </div>
+          )}
 
-          <div className={!isButtonEnabled ? "w-full modalContent top-2/3" : "w-full modalContent inset-y-1/2 bottom-4"}>
-            <p dangerouslySetInnerHTML={{ __html: description }} className="break-words"></p>
+          <div
+            className={
+              !buttonEnabled
+                ? "w-full modalContent top-2/3"
+                : "w-full modalContent inset-y-1/2 bottom-4"
+            }
+          >
+            <p
+              className="break-words"
+              dangerouslySetInnerHTML={{ __html: description }}
+            />
           </div>
+
           <div className="modalActions">
             <div className="actionsContainer">
-              {
-                isButtonEnabled ?
-                  <button className="deleteBtn" onClick={() => setIsModalOpen(false)}>
-                    <b>OK</b>
-                  </button> :
-                  <></>
-              }
+              {buttonEnabled && (
+                <button className="deleteBtn" onClick={handleButtonClick}>
+                  <b>{actionText || "OK"}</b>
+                </button>
+              )}
             </div>
           </div>
+
         </div>
       </div>
     </>
   );
-};
-
-export default Modal;
+}

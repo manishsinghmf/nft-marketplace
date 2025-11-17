@@ -1,5 +1,6 @@
 import axios from "axios";
 import { PINATA_GATEWAY_BASE_URL } from "./commonUtils";
+import { formatUnits, parseUnits } from "viem";
 
 export function mapformat(old_format) {
   let new_format = {}
@@ -65,3 +66,26 @@ export async function getNFTDetailsFromURI(uri) {
     return null;
   }
 }
+
+export const convertToEther = (value, decimals = 18) =>
+  value ? formatUnits(BigInt(value), decimals) : "0";
+
+export const convertToWei = (value, decimals = 18) =>
+  parseUnits(value.toString(), decimals);
+
+export const noExponents = (num) => {
+  const data = String(num).split(/[eE]/);
+  if (data.length === 1) return data[0];
+  let z = "",
+    sign = num < 0 ? "-" : "",
+    str = data[0].replace(".", ""),
+    mag = Number(data[1]) + 1;
+  if (mag < 0) {
+    z = sign + "0.";
+    while (mag++) z += "0";
+    return z + str.replace(/^\-/, "");
+  }
+  mag -= str.length;
+  while (mag--) z += "0";
+  return str + z;
+};

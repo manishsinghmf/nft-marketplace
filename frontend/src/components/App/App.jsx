@@ -1,152 +1,104 @@
+// src/components/App/App.jsx
+import React, { useEffect } from "react";
 import { Outlet } from "react-router-dom";
-import { useState, createContext, useEffect } from "react";
+
 import Header from "../Header/Header";
 import Footer from "../Footer/Footer";
-import Modal from "../Modal/Modal";
-import { chainProperties, supportedChains } from "../../utils/commonUtils";
-import { checkIsMetamaskConnected, connectToWeb3, connectToMetamaskAccount, getWalletBalance } from "../../utils/wallet";
-import { ALERT, CHAIN_NOT_SUPPORTED_ERROR, METAMASK_DISCONNECTED_ERROR, USER_REQUEST_REJECT_ERROR } from "../../utils/messageConstants";
+import GlobalModal from "../common/GlobalModal";
 import NetworkModal from "../NetworkModal/NetworkModal";
 
-export const MyContext = createContext();
+import { getSupportedNetworkList } from "../../utils/networkUtils";
 
-function App() {
+import useAppStore from "../../store/useAppStore";
+import useWallet from "../../hooks/useWallet";
+import { useModalStore } from "../../store/modalStore";
 
-    /** States related to modal popup box */
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalHeading, setModalHeading] = useState("");
-    const [modalDescription, setModalDescription] = useState("");
-    const [modalButtonEnabled, setModalButtonEnabled] = useState(false);
+import { getContract } from "viem";
+import { nftAbi } from "../../config/abis/fandomNftAbi";
+import { marketplaceAbi } from "../../config/abis/marketplaceAbi";
 
-    /** States related to modal popup box */
-    const [isNetworkModalOpen, setIsNetworkModalOpen] = useState(false);
+export default function App() {
+    /** UI: network modal store */
+    const { networkModalOpen, setNetworkModalOpen } = useModalStore();
+    const networkList = getSupportedNetworkList();
 
-    /** States for context API's */
-    const [web3, setWeb3] = useState(null);
-    const [isMetamaskPresent, setIsMetamaskPresent] = useState(false);
-    const [walletConnected, setWalletConnected] = useState(null);
-    const [isChainSupported, setIsChainSupported] = useState(false);
-    const [walletEthBalance, setWalletEthBalance] = useState("0");
-    const [nftContract, setNftContract] = useState(null);
-    const [marketplaceContract, setMarketplaceContract] = useState(null);
-    const [chainConfig, setChainConfig] = useState(null);
-    const [networkSelected, setNetworkSelected] = useState(null);
-    const [networkList, setNetworkList] = useState([]);
+    /** App global contract / chain config store */
+    const {
+        setNftContract,
+        setMarketplaceContract,
+        setChainConfig,
+        chainConfig
+    } = useAppStore();
 
-    if (window.ethereum) {
+    /** Wallet / network hook */
+    const { chainId, isConnected, activeChain } = useWallet();
 
-        /** Handles account changed event thrown by metamask and updates context states accordingly */
-        window.ethereum.on('accountsChanged', async (accounts) => {
-            if (!accounts[0]) {
-                setWalletConnected(null);
-                setWeb3(null);
-                setWalletEthBalance("0");
-                setNetworkSelected(null);
-                setModalHeading(ALERT);
-                setModalDescription(METAMASK_DISCONNECTED_ERROR);
-                setModalButtonEnabled(true);
-                setIsModalOpen(true);
-            } else {
-                setWalletConnected(accounts[0]);
-                setWalletEthBalance(await getWalletBalance(accounts[0]));
-            }
-        });
-
-        /** Handles chain changed event thrown by metamask and updates context states accordingly */
-        window.ethereum.on('chainChanged', async (chain) => {
-            if (!supportedChains[chain]) {
-                setIsChainSupported(false);
-                setWalletEthBalance("0");
-                setModalHeading(ALERT);
-                setModalDescription(CHAIN_NOT_SUPPORTED_ERROR);
-                setModalButtonEnabled(true);
-                setIsModalOpen(true);
-                setChainConfig(null);
-                setWalletConnected(null);
-                setNetworkSelected(null);
-            } else {
-                let wallet = await checkIsMetamaskConnected();
-                if (!wallet) {
-                    wallet = await connectToMetamaskAccount();
-                    if (!wallet) {
-                        setWalletEthBalance("0");
-                        setModalHeading(ALERT);
-                        setModalDescription(USER_REQUEST_REJECT_ERROR);
-                        setModalButtonEnabled(true);
-                        setIsModalOpen(true);
-                        return;
-                    }
-                }
-
-                console.log("Connected wallet address: ", wallet);
-                setWeb3(connectToWeb3(window.ethereum));
-                setChainConfig(chainProperties[chain]);
-                setWalletConnected(wallet);
-                setIsChainSupported(true);
-                setWalletEthBalance(await getWalletBalance(wallet));
-                setNetworkSelected(chainProperties[chain].chain);
-            }
-        });
-
-    }
-
+    /**
+     * ⚙️ When wallet switches chains → update chainConfig
+     */
     useEffect(() => {
-        let networks = Object.entries(supportedChains).map(([k, v]) => ({ ["name"]: v, ["id"]: k }));
-        setNetworkList(networks);
-    }, []);
+        if (!isConnected || !activeChain) return;
+
+        setChainConfig({
+            id: activeChain.id,
+            name: activeChain.name,
+            currency: activeChain.nativeCurrency.symbol,
+            explorerUrl: activeChain.blockExplorers?.default?.url || "",
+            nftAddress: import.meta.env.VITE_NFT_CONTRACT_ADDRESS,
+            marketplaceAddress: import.meta.env.VITE_MARKETPLACE_CONTRACT_ADDRESS,
+        });
+    }, [isConnected, activeChain, setChainConfig]);
+
+    /**
+     * 🧩 Build contract instances when chainConfig changes
+     */
+    useEffect(() => {
+        if (!chainConfig || !isConnected || !activeChain) return;
+
+        try {
+            const nftContract = getContract({
+                address: chainConfig.nftAddress,
+                abi: nftAbi,
+                client: { chain: activeChain },
+            });
+
+            const marketplaceContract = getContract({
+                address: chainConfig.marketplaceAddress,
+                abi: marketplaceAbi,
+                client: { chain: activeChain },
+            });
+
+            setNftContract(nftContract);
+            setMarketplaceContract(marketplaceContract);
+
+        } catch (err) {
+            console.error("❌ Contract initialization failed:", err);
+        }
+    }, [chainConfig, isConnected, activeChain, setNftContract, setMarketplaceContract]);
 
     return (
-        <div>
-            <MyContext.Provider value={{
-                web3, setWeb3, isMetamaskPresent,
-                setIsMetamaskPresent, walletConnected, setWalletConnected,
-                isChainSupported, setIsChainSupported,
-                isModalOpen, setIsModalOpen,
-                modalHeading, setModalHeading,
-                modalDescription, setModalDescription,
-                modalButtonEnabled, setModalButtonEnabled,
-                walletEthBalance, setWalletEthBalance,
-                nftContract, setNftContract,
-                marketplaceContract, setMarketplaceContract,
-                chainConfig, setChainConfig,
-                networkSelected, setNetworkSelected,
-                networkList, setNetworkList, isNetworkModalOpen,
-                setIsNetworkModalOpen
-            }}>
+        <>
+            {/* APP LAYOUT */}
+            <div className="flex flex-col min-h-screen bg-[#121212] text-white">
                 <Header />
-                <div className="min-h-[calc(100vh-164px)] bg-[#282c34]">
+
+                <main className="flex-1 min-h-[calc(100vh-164px)] bg-[#1e1e1e]">
                     <Outlet />
-                </div>
-                <div className="bottom-0">
-                    <Footer />
-                </div>
-            </MyContext.Provider>
-            {isModalOpen &&
-                <Modal setIsModalOpen={setIsModalOpen}
-                    heading={modalHeading}
-                    description={modalDescription}
-                    isButtonEnabled={modalButtonEnabled}
-                />
-            }
-            {isNetworkModalOpen &&
+                </main>
+
+                <Footer />
+            </div>
+
+            {/* GLOBAL MODAL (ZUSTAND) */}
+            <GlobalModal />
+
+            {/* NETWORK SWITCH MODAL */}
+            {networkModalOpen && (
                 <NetworkModal
-                    setIsNetworkModalOpen={setIsNetworkModalOpen}
                     data={networkList}
-                    setIsModalOpen={setIsModalOpen}
-                    setModalHeading={setModalHeading}
-                    setModalDescription={setModalDescription}
-                    setModalButtonEnabled={setModalButtonEnabled}
-                    setNetworkSelected={setNetworkSelected}
-                    setWalletEthBalance={setWalletEthBalance}
-                    setChainConfig={setChainConfig}
-                    setWalletConnected={setWalletConnected}
-                    walletConnected={walletConnected}
-                    setWeb3={setWeb3}
-                    setIsChainSupported={setIsChainSupported}
+                    setIsNetworkModalOpen={setNetworkModalOpen}
                 />
-            }
-        </div>
+            )}
+        </>
     );
 }
-
-export default App;

@@ -1,4 +1,5 @@
-import React, { useContext, useEffect } from "react";
+// src/components/Header/Header.jsx
+import React, { useState, useEffect } from "react";
 import {
   Navbar,
   Collapse,
@@ -6,318 +7,182 @@ import {
   Button,
   IconButton,
 } from "@material-tailwind/react";
-import './Header.css';
-import logo from "../../assets/logo.png";
+
 import { Link } from "react-router-dom";
-import {
-  checkIsMetamaskPresent, connectToWeb3,
-  getChainConnected, getWalletBalance, connectToSpecificMetamaskNetwork, connectToMetamaskAccount
-} from "../../utils/wallet";
-import { MyContext } from "../App/App";
-import { chainProperties, supportedChains } from "../../utils/commonUtils";
-import { ALERT, CHAIN_NOT_SUPPORTED_ERROR, METAMASK_NOT_FOUND_ERROR, USER_REQUEST_REJECT_ERROR } from "../../utils/messageConstants";
-import { nftAbi } from "../../utils/abis/fandomNftAbi";
-import { marketplaceAbi } from "../../utils/abis/marketplaceAbi";
-import { getContract } from 'viem';
+import "./Header.css";
+import logo from "../../assets/logo.png";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+
+// Hooks & Stores
+import useWallet from "../../hooks/useWallet";
+import useAppStore from "../../store/useAppStore";
+import { useModalStore } from "../../store/modalStore";
+
+import { supportedChains } from "../../config/chains";
 
 export default function Header() {
+  const [openNav, setOpenNav] = useState(false);
 
-  /** Importing context API's states to use in the component*/
-  const { web3, setWeb3, isMetamaskPresent, setIsMetamaskPresent,
-    walletConnected, setWalletConnected, setIsChainSupported,
-    setIsModalOpen, setModalHeading, setModalDescription,
-    setModalButtonEnabled, walletEthBalance, setWalletEthBalance,
-    setMarketplaceContract, setNftContract, isChainSupported,
-    chainConfig, setChainConfig, setIsNetworkModalOpen,
-    networkSelected, setNetworkSelected, networkList
-  } = useContext(MyContext);
+  /** Zustand Stores */
+  const { chainConfig } = useAppStore();
+  const { setNetworkModalOpen } = useModalStore();
 
-  /** States to open and close navbar in small devices */
-  const [openNav, setOpenNav] = React.useState(false);
+  /** Wallet Info */
+  const { address, isConnected, chainId } = useWallet();
 
-  /** Connect to metamask wallet and update the context states accordingly */
-  const connectWallet = async () => {
-    setOpenNav(false);
-    if (!walletConnected) {
-      if (!isMetamaskPresent) {
-        if (checkIsMetamaskPresent()) {
-          setIsMetamaskPresent(true);
-          connectToMetamask();
-        } else {
-          setIsMetamaskPresent(false);
-          setModalHeading(ALERT);
-          setModalDescription(METAMASK_NOT_FOUND_ERROR);
-          setModalButtonEnabled(true);
-          setIsModalOpen(true);
-        }
-      } else {
-        connectToMetamask();
-      }
-    }
-  }
-
-  /** Handles metamask connection */
-  const connectToMetamask = async () => {
-    const wallet = await connectToSpecificMetamaskNetwork(networkList[0].id);
-    if (!wallet) {
-      setWalletEthBalance("0");
-      setModalHeading(ALERT);
-      setModalDescription(USER_REQUEST_REJECT_ERROR);
-      setModalButtonEnabled(true);
-      setIsModalOpen(true);
-      return false;
-    }
-    const chainCheck = await checkChainConnected();
-    if (chainCheck) {
-      setNetworkSelected(networkList[0].name);
-      setWeb3(connectToWeb3(window.ethereum));
-      const wal = await connectToMetamaskAccount();
-      console.log("Connected wallet address: ", wal);
-      setWalletConnected(wal);
-      setWalletEthBalance(await getWalletBalance(wal));
-    }
-    return true;
-  }
-
-  /** To check metamask connected chain is supported by us or not */
-  const checkChainConnected = async () => {
-    const chain = await getChainConnected();
-    if (!supportedChains[chain]) {
-      setIsChainSupported(false);
-      setWalletEthBalance("0");
-      setModalHeading(ALERT);
-      setModalDescription(CHAIN_NOT_SUPPORTED_ERROR);
-      setModalButtonEnabled(true);
-      setIsModalOpen(true);
-      setChainConfig(null);
-      return false;
-    } else {
-      setIsChainSupported(true);
-      setChainConfig(chainProperties[chain]);
-      return true;
-    }
-  }
-
+  /** Auto-update chainConfig when chain changes */
   useEffect(() => {
-    if (web3 && chainConfig) {
-      const nft = getContract({
-        address: chainConfig.nftAddress,
-        abi: nftAbi,
-        client: { wallet: web3 },
+    if (!chainId) return;
+
+    const currentChain = supportedChains.find((c) => c.id === chainId);
+    if (currentChain) {
+      // Let App.jsx update contracts; Header only updates UI config
+      useAppStore.setState({
+        chainConfig: {
+          id: currentChain.id,
+          name: currentChain.name,
+          currency: currentChain.nativeCurrency.symbol,
+          explorerUrl: currentChain.blockExplorers?.default?.url || "",
+        },
       });
-      const marketplace = getContract({
-        address: chainConfig.marketplaceAddress,
-        abi: marketplaceAbi,
-        client: { wallet: web3 },
-      });
-      setNftContract(nft);
-      setMarketplaceContract(marketplace);
     }
-  }, [web3, chainConfig]);
+  }, [chainId]);
 
-  React.useEffect(() => {
-    window.addEventListener(
-      "resize",
-      () => window.innerWidth >= 960 && setOpenNav(false)
-    );
-  }, []);
+  /** Short Address Utility */
+  const shortAddress =
+    address && `${address.slice(0, 4)}...${address.slice(-4)}`;
 
+  /** NAV ITEMS */
   const navList = (
     <ul className="mb-4 mt-2 flex flex-col gap-2 lg:mb-0 lg:mt-0 lg:flex-row lg:items-center lg:gap-6">
-      <Typography
-        as="li"
-        variant="small"
-        color="blue-gray"
-        className="p-1 font-normal"
-      >
-        <Link onClick={() => setOpenNav(false)} to="/" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>
-            Dashboard
-          </b>
-        </Link>
-      </Typography>
-      <Typography
-        as="li"
-        variant="small"
-        color="blue-gray"
-        className="p-1 font-normal"
-      >
-        <Link onClick={() => setOpenNav(false)} to="/dashboard" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>
-            My Collection
-          </b>
-        </Link>
-      </Typography>
-      <Typography
-        as="li"
-        variant="small"
-        color="blue-gray"
-        className="p-1 font-normal"
-      >
-        <Link onClick={() => setOpenNav(false)} to="/mint" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>
-            Mint
-          </b>
-        </Link>
-      </Typography>
-      <Typography
-        as="li"
-        variant="small"
-        color="blue-gray"
-        className="p-1 font-normal"
-      >
-        <Link onClick={() => setOpenNav(false)} to="/buy" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>
-            Buy
-          </b>
-        </Link>
-      </Typography>
-      <Typography
-        as="li"
-        variant="small"
-        color="blue-gray"
-        className="p-1 font-normal"
-      >
-        <Link onClick={() => setOpenNav(false)} to="/sell" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>
-            Sell
-          </b>
-        </Link>
-      </Typography>
+      {[
+        { to: "/", label: "Dashboard" },
+        { to: "/my-collection", label: "My Collection" },
+        { to: "/mint", label: "Mint" },
+        { to: "/buy", label: "Buy" },
+        { to: "/sell", label: "Sell" },
+      ].map((link) => (
+        <Typography
+          as="li"
+          variant="small"
+          className="p-1 font-normal"
+          key={link.to}
+        >
+          <Link
+            onClick={() => setOpenNav(false)}
+            to={link.to}
+            className="flex items-center text-base hover:text-[#ee82ee]"
+          >
+            <b>{link.label}</b>
+          </Link>
+        </Typography>
+      ))}
     </ul>
   );
 
-  const selectNetwork = async () => {
+  /** Open Network Modal */
+  const selectNetwork = () => {
     setOpenNav(false);
-    setIsNetworkModalOpen(true);
-  }
+    setNetworkModalOpen(true);
+  };
+
+  /** Auto Close on Resize */
+  useEffect(() => {
+    const handleResize = () =>
+      window.innerWidth >= 960 && setOpenNav(false);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
-    <>
-      <Navbar className="sticky bg-black text-white inset-0 z-10 h-max max-w-full rounded-none py-2 px-4 lg:px-8 lg:py-4">
-        <div className="flex items-center justify-between text-blue-gray-900">
-          <Link onClick={() => setOpenNav(false)} to="/">
-            <img className="h-12 cursor-pointer" src={logo} alt="logo" />
-          </Link>
-          <div className="flex items-center gap-4">
-            <div className="mr-4 hidden lg:block">{navList}</div>
+    <Navbar className="sticky bg-black text-white inset-0 z-10 h-max max-w-full rounded-none py-2 px-4 lg:px-8 lg:py-4 border-none">
+      <div className="flex items-center justify-between">
 
-            {networkSelected && <Button
-              variant="gradient"
-              size="sm"
-              className="connect-wallet-btn
-                hidden lg:inline-block hover:text-black focus:text-black active:text-black"
-            >
-              {networkSelected}
-            </Button>}
+        {/* LOGO */}
+        <Link onClick={() => setOpenNav(false)} to="/">
+          <img src={logo} className="h-12 cursor-pointer" alt="logo" />
+        </Link>
 
-            {(walletConnected && isChainSupported) ?
-              <Button
-                variant="gradient"
-                size="sm"
-                className="connect-wallet-btn
-                          hidden lg:inline-block"
+        {/* Desktop Nav + Connect Button */}
+        <div className="flex items-center gap-4">
+          <div className="mr-4 hidden lg:block">{navList}</div>
+
+          {/* RainbowKit */}
+          <ConnectButton
+            showBalance={true}
+            chainStatus="name"
+            accountStatus={{
+              smallScreen: "full",
+              largeScreen: "full",
+            }}
+          />
+
+          {/* Mobile Menu Icon */}
+          <IconButton
+            variant="text"
+            className="ml-auto h-6 w-6 text-inherit lg:hidden"
+            ripple={false}
+            onClick={() => setOpenNav(!openNav)}
+          >
+            {openNav ? (
+              <svg
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="h-6 w-6"
               >
-                <span>Bal: {
-                  !!walletEthBalance ? walletEthBalance.substring(0, 6) :
-                    walletEthBalance
-                } {chainConfig ? chainConfig.currency : ""}</span>
-              </Button> : <></>
-            }
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="h-6 w-6"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </IconButton>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      <Collapse open={openNav}>
+        {navList}
+
+        {isConnected && (
+          <>
+            {/* Current Network */}
             <Button
               variant="gradient"
               size="sm"
-              className="connect-wallet-btn
-                hidden lg:inline-block hover:text-black focus:text-black active:text-black"
+              fullWidth
+              className="connect-wallet-btn mb-2"
               onClick={selectNetwork}
             >
-              {
-                walletConnected && walletConnected.length ?
-                  <span>{walletConnected.substring(0, 4) +
-                    "..." +
-                    walletConnected.substring(walletConnected.length - 4)
-                  }</span> :
-                  <span >Connect Wallet</span>
-              }
+              {chainConfig?.name || "Select Network"}
             </Button>
-            <IconButton
-              variant="text"
-              className="ml-auto h-6 w-6 icon-btn text-inherit hover:bg-transparent focus:bg-transparent active:bg-transparent lg:hidden"
-              ripple={false}
-              onClick={() => setOpenNav(!openNav)}
+
+            {/* Address Display */}
+            <Button
+              variant="gradient"
+              size="sm"
+              fullWidth
+              className="connect-wallet-btn mb-2"
             >
-              {openNav ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  className="h-6 w-6 relative"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6 relative"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              )}
-            </IconButton>
-          </div>
+              {shortAddress}
+            </Button>
+          </>
+        )}
+
+        {/* Mobile Connect Button */}
+        <div className="mb-2">
+          <ConnectButton chainStatus="icon" accountStatus="address" />
         </div>
-        <Collapse open={openNav}>
-          {navList}
-
-          {networkSelected && <Button variant="gradient" size="sm" fullWidth
-            className="connect-wallet-btn
-            mb-2 hover:text-black focus:text-black active:text-black"
-          >
-            {
-              networkSelected
-            }
-          </Button>
-          }
-
-          {(walletConnected && isChainSupported) ?
-            <Button variant="gradient" size="sm" fullWidth
-              className="connect-wallet-btn
-            mb-2">
-              <span>Bal: {
-                !!walletEthBalance ? walletEthBalance.substring(0, 6) :
-                  walletEthBalance
-              } {chainConfig ? chainConfig.currency : ""}</span>
-            </Button> : <></>
-          }
-          <Button variant="gradient" size="sm" fullWidth
-            className="connect-wallet-btn
-            mb-2 hover:text-black focus:text-black active:text-black"
-            onClick={selectNetwork}
-          >
-            {
-              walletConnected && walletConnected.length ?
-                <span>{walletConnected.substring(0, 4) +
-                  "..." +
-                  walletConnected.substring(walletConnected.length - 4)
-                }</span> :
-                <span>Connect Wallet</span>
-            }
-          </Button>
-        </Collapse>
-      </Navbar>
-    </>
+      </Collapse>
+    </Navbar>
   );
 }
