@@ -4,7 +4,7 @@ import { Outlet } from "react-router-dom";
 
 import Header from "../Header/Header";
 import Footer from "../Footer/Footer";
-import GlobalModal from "../common/GlobalModal";
+import Modal from "../Modal/Modal";
 import NetworkModal from "../NetworkModal/NetworkModal";
 
 import { getSupportedNetworkList } from "../../utils/networkUtils";
@@ -90,7 +90,7 @@ export default function App() {
             </div>
 
             {/* GLOBAL MODAL (ZUSTAND) */}
-            <GlobalModal />
+            <Modal />
 
             {/* NETWORK SWITCH MODAL */}
             {networkModalOpen && (

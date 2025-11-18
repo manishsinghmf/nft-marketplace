@@ -108,14 +108,16 @@ export default function Header() {
           <div className="mr-4 hidden lg:block">{navList}</div>
 
           {/* RainbowKit */}
-          <ConnectButton
-            showBalance={true}
-            chainStatus="name"
-            accountStatus={{
-              smallScreen: "full",
-              largeScreen: "full",
-            }}
-          />
+          <div className="connect-wallet-btn">
+            <ConnectButton
+              showBalance={true}
+              chainStatus="name"
+              accountStatus={{
+                smallScreen: "full",
+                largeScreen: "full",
+              }}
+            />
+          </div>
 
           {/* Mobile Menu Icon */}
           <IconButton
@@ -179,7 +181,7 @@ export default function Header() {
         )}
 
         {/* Mobile Connect Button */}
-        <div className="mb-2">
+        <div className="mb-2 connect-wallet-btn">
           <ConnectButton chainStatus="icon" accountStatus="address" />
         </div>
       </Collapse>

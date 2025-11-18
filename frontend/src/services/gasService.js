@@ -15,7 +15,7 @@ export async function estimateTotalGasCost({
     args = [],
     publicClient,
     account,
-    value = 0n,   // <--- add value support
+    value = 0n,
 }) {
     if (!publicClient) throw new Error("publicClient required");
     if (!chainId) throw new Error("chainId required");
@@ -25,22 +25,13 @@ export async function estimateTotalGasCost({
     if (!contract) throw new Error(`Contract ${contractName} not configured for chain ${chainId}`);
 
     try {
-        console.log("estimateTotalGasCost debug:", {
-            address: contract.address,
-            abi: contract.abi,
-            functionName,
-            args,
-            account,
-            value: value.toString()
-        });
-
         const gasEstimate = await publicClient.estimateContractGas({
             address: contract.address,
             abi: contract.abi,
             functionName,
             args,
-            account,       // REQUIRED for ERC-1155 and marketplace
-            value: BigInt(value), // REQUIRED for payable functions
+            account,
+            value: BigInt(value),
         });
 
         const gasPrice = await publicClient.getGasPrice();

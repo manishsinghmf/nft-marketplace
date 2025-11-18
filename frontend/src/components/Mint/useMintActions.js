@@ -27,6 +27,12 @@ export default function useMintActions({
      * VALIDATION
      ----------------------------------------------------- */
     const validate = () => {
+
+        if (!nftImage) {
+            openModal("Missing Image", "Upload an image.", true);
+            return false;
+        }
+
         if (!nftInfo.name || !nftInfo.description) {
             openModal("Missing Fields", "Name & description required.", true);
             return false;
@@ -34,15 +40,16 @@ export default function useMintActions({
 
         const numeric = ["quantity", "rarity", "style", "beauty", "comedy", "action"];
         for (const key of numeric) {
-            if (Number(nftInfo[key]) <= 0) {
+            const value = nftInfo[key];
+            if (value === "" || value === null || isNaN(Number(value))) {
+                openModal("Invalid Input", `${key} must be a valid number`, true);
+                return false;
+            }
+
+            if (Number(value) <= 0) {
                 openModal("Invalid Input", `${key} must be > 0`, true);
                 return false;
             }
-        }
-
-        if (!nftImage) {
-            openModal("Missing Image", "Upload an image.", true);
-            return false;
         }
 
         return true;

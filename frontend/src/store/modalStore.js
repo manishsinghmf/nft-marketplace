@@ -8,6 +8,7 @@ export const useModalStore = create((set) => ({
         buttonEnabled: true,
         actionText: "OK",
         onAction: null,
+        context: null,
     },
 
     /** ----------------------------------------------------------
@@ -16,7 +17,7 @@ export const useModalStore = create((set) => ({
      *   openModal("Title", "Description");
      *   openModal({ heading, description, ... });
      * --------------------------------------------------------- */
-    openModal: (headingOrObj, description = "", buttonEnabled = true) => {
+    openModal: (headingOrObj, description = "", buttonEnabled = true, context = "general") => {
         // Case 1 — called as: openModal("Title", "Desc")
         if (typeof headingOrObj === "string") {
             return set(() => ({
@@ -27,6 +28,8 @@ export const useModalStore = create((set) => ({
                     buttonEnabled,
                     actionText: "OK",
                     onAction: null,
+                    context,
+
                 },
             }));
         }
@@ -42,6 +45,7 @@ export const useModalStore = create((set) => ({
                 buttonEnabled: payload.buttonEnabled ?? true,
                 actionText: payload.actionText || "OK",
                 onAction: payload.onAction || null,
+                context: payload.context || "general",
             },
         }));
     },
@@ -56,15 +60,19 @@ export const useModalStore = create((set) => ({
             modal: {
                 ...state.modal,
                 ...updates,
-                open: updates.open ?? true, // default stays open
+                open: updates.open ?? true,
+                context: state.modal.context,
             },
         })),
 
     /** ----------------------------------------------------------
      * closeModal()
      * --------------------------------------------------------- */
-    closeModal: () =>
-        set((state) => ({
-            modal: { ...state.modal, open: false },
-        })),
+    closeModal: (context) =>
+        set((state) => {
+            if (!context || context === state.modal.context) {
+                return { modal: { ...state.modal, open: false } };
+            }
+            return {};
+        }),
 }));

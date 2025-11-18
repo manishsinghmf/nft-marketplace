@@ -93,7 +93,8 @@ export const ContractService = {
                 if (!metadata) return null;
 
                 return {
-                    nftId: Number(item.tokenId ?? item.itemId ?? 0),
+                    nftId: Number(item.tokenId ?? 0),
+                    itemId: Number(item.itemId ?? 0),
                     image: metadata.image,
                     name: metadata.name,
                     description: metadata.description,

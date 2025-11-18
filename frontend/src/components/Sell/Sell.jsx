@@ -5,6 +5,7 @@ import "./Sell.css";
 import Detail from "../Detail/Detail";
 import NoItem from "../NoItem/NoItem";
 import PriceModal from "../PriceModal/PriceModal";
+import NFTCard from "../NFTCard/NFTCard";
 
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { ContractService } from "../../services/contractService";
@@ -126,37 +127,17 @@ export default function Sell() {
       {items.length > 0 ? (
         <div className="sell-page">
           <div className="sell-container mx-auto px-4 py-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 p-12">
+            <div className="nft-grid">
               {items.map((n) => (
-                <div
-                  className="max-w-sm rounded overflow-hidden shadow-lg sell-card"
+                <NFTCard
                   key={n.nftId}
-                >
-                  <img src={n.image} alt="#" className="w-full" />
+                  nft={n}
+                  showMore={true}
+                  onMore={(n) => openDetails(n)}
+                  ctaText="Sell"
+                  onCta={(n) => openPricePopup(n)}
+                />
 
-                  <div className="px-6 py-4">
-                    <h5 className="font-bold text-xl mb-2">{n.name}</h5>
-                    <p className="text-white-700 text-base">{n.description}</p>
-
-                    <span className="icon">
-                      <a
-                        className="text-[#0000EE] underline cursor-pointer text-sm"
-                        onClick={() => openDetails(n)}
-                      >
-                        more details
-                      </a>
-                    </span>
-                  </div>
-
-                  <div className="px-6 pb-4">
-                    <button
-                      className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded sell-sc-button"
-                      onClick={() => openPricePopup(n)}
-                    >
-                      Sell
-                    </button>
-                  </div>
-                </div>
               ))}
             </div>
           </div>

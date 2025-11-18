@@ -7,7 +7,7 @@ import { useModalStore } from "../../store/modalStore";
 
 export default function Modal() {
   const {
-    modal: { open, heading, description, buttonEnabled, actionText, onAction },
+    modal: { open, heading, description, ringLoaderEnabled, actionText, onAction },
     closeModal,
   } = useModalStore();
 
@@ -31,13 +31,13 @@ export default function Modal() {
             <h3 className="heading">{heading}</h3>
           </div>
 
-          <button className="closeBtn" onClick={closeModal}>
+          <button className="closeBtn" onClick={handleBackgroundClick}>
             X
           </button>
 
           <hr />
 
-          {!buttonEnabled && (
+          {!ringLoaderEnabled && (
             <div className="py-8 inline-block w-full text-center">
               <RingLoader
                 color={"rgba(54, 215, 183, 1)"}
@@ -49,20 +49,20 @@ export default function Modal() {
 
           <div
             className={
-              !buttonEnabled
+              !ringLoaderEnabled
                 ? "w-full modalContent top-2/3"
                 : "w-full modalContent inset-y-1/2 bottom-4"
             }
           >
             <p
-              className="break-words"
+              className="break-words" style={{ wordBreak: "break-word" }}
               dangerouslySetInnerHTML={{ __html: description }}
             />
           </div>
 
           <div className="modalActions">
             <div className="actionsContainer">
-              {buttonEnabled && (
+              {ringLoaderEnabled && (
                 <button className="deleteBtn" onClick={handleButtonClick}>
                   <b>{actionText || "OK"}</b>
                 </button>

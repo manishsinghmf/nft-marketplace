@@ -1,0 +1,69 @@
+/* ----------------------------------
+   NFT CARD UI (shared across ALL pages)
+---------------------------------- */
+/* .nft-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 2rem;
+    padding: 3rem 3rem 1rem;
+} */
+
+.nft-card {
+    background: #222232;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #333;
+    transition: 0.25s;
+    cursor: pointer;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.25);
+}
+
+.nft-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 35px rgba(99, 69, 237, 0.35);
+}
+
+/* IMAGE */
+.nft-image-wrapper {
+    width: 100%;
+    height: 200px;
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.nft-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* ----------------------------------
+     BUTTON (CTA)
+  ---------------------------------- */
+.dashboard-sc-button {
+    width: 100%;
+    padding: 12px 0;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    background: linear-gradient(130deg, #6345ed 17%, #dc39fc 82%);
+    transition: 0.25s ease-in-out;
+}
+
+.dashboard-sc-button:hover {
+    opacity: 0.85;
+    transform: scale(1.03);
+}
+
+/* More details link */
+.more-link {
+    color: #00aaff;
+    text-decoration: underline;
+    font-size: 14px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}

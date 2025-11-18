@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import NoItem from "../NoItem/NoItem";
 import Detail from "../Detail/Detail";
+import NFTCard from "../NFTCard/NFTCard";
 
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { ContractService } from "../../services/contractService";
@@ -29,41 +30,41 @@ export default function Buy() {
   const currency = chainConfig?.name || "ETH";
 
   /** --------------------------------------------------------
-   * Load all market items using new ContractService
+   * Load all market items (LOADER CONTEXT)
    -------------------------------------------------------- */
   const loadItemsForSale = async () => {
     if (!isConnected || !publicClient || !chainId) return;
 
-    openModal("Loading...", "Fetching NFTs on sale. Please wait...");
+    // Mark this modal as loader-owned
+    openModal("Loading...", "Fetching NFTs on sale. Please wait...", true, "loader");
 
     try {
-      // ✔ Correct unified metadata fetch
       const list = await ContractService.fetchAndResolveNFTs({
         source: "marketplace",
         chainId,
         publicClient,
       });
 
-      // list structure: { nftId, price, image, name, uri, raw }
-      // seller is inside raw.seller → flatten manually
       const mapped = list.map((item) => ({
         ...item,
         seller: item.raw?.seller,
       }));
 
-      // remove owned NFTs
       const filtered = mapped.filter(
-        (item) =>
-          item.seller?.toLowerCase() !== address?.toLowerCase()
+        (item) => item.seller?.toLowerCase() !== address?.toLowerCase()
       );
 
       setItems(filtered || []);
+
+      // Only close if this function opened the modal
+      closeModal("loader");
+
     } catch (err) {
       console.error("❌ loadItemsForSale error:", err);
       setItems([]);
-      setModal("Error", "Failed to load NFT marketplace items.", true);
-    } finally {
-      closeModal();
+
+      // Show error under loader context
+      openModal("Error", "Failed to load NFT marketplace items.", true, "loader");
     }
   };
 
@@ -73,14 +74,13 @@ export default function Buy() {
   }, [isConnected, chainId]);
 
   /** --------------------------------------------------------
-   * BUY NFT
+   * BUY FLOW (BUY CONTEXT)
    -------------------------------------------------------- */
   const buy = async (selectedNft) => {
     if (!walletClient || !publicClient) return;
 
-    console.log("address", address, "selectedNFT", selectedNft)
-
-    openModal("Preparing Transaction", "Estimating gas...", false);
+    // This modal belongs to BUY flow
+    openModal("Preparing Transaction", "Estimating gas...", false, "buy");
 
     try {
       const priceWei = BigInt(Math.floor(selectedNft.price * 1e18));
@@ -90,7 +90,7 @@ export default function Buy() {
         chainId,
         contractName: "marketplace",
         functionName: CONTRACT_FUNCTIONS.MARKETPLACE.BUY,
-        args: [selectedNft.nftId],
+        args: [selectedNft.itemId],
         publicClient,
         account: address,
         value: priceWei
@@ -98,50 +98,67 @@ export default function Buy() {
 
       const userBalance = await publicClient.getBalance({ address });
 
-      if (
-        !BalanceService.hasEnoughBalance({
-          userBalanceWei: userBalance,
-          requiredWei: gasInfo.requiredWei,
-        })
-      ) {
-        return setModal(
-          "Insufficient Balance",
-          `You need at least ${gasInfo.requiredEth.toFixed(5)} ${currency} to buy this NFT.`,
-          true
-        );
+      if (!BalanceService.hasEnoughBalance({
+        userBalanceWei: userBalance,
+        requiredWei: gasInfo.requiredWei,
+      })) {
+        return setModal({
+          heading: "Insufficient Balance",
+          description: `You need at least ${gasInfo.requiredEth.toFixed(5)} ${currency} to buy this NFT.`,
+          buttonEnabled: true,
+        });
       }
 
-      setModal("Confirm Purchase", "Please confirm in your wallet...", false);
+      // Update modal but KEEP BUY CONTEXT
+      setModal({
+        heading: "Confirm Purchase",
+        description: "Please confirm in your wallet...",
+        buttonEnabled: false,
+      });
 
-      /** BUY Transaction */
       const { tx } = await ContractService.buyMarketItem({
         chainId,
-        itemId: selectedNft.nftId, // 🔥 Fix: use nftId, not itemId (your contract passes tokenId)
+        itemId: selectedNft.itemId,
         value: priceWei,
         walletClient,
       });
 
-      setModal(
-        "Transaction Sent",
-        `View on explorer: <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`
-      );
+      // Update content only
+      setModal({
+        heading: "Transaction Sent",
+        description: `View on explorer: <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`,
+        buttonEnabled: false,
+      });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
 
-      if (receipt.status === "success") {
-        setModal(
-          "Success",
-          `NFT purchased! <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`,
-          true
-        );
+      const success = receipt.status === 1 || receipt.status === "success";
 
-        loadItemsForSale();
+      if (success) {
+        setModal({
+          heading: "Success",
+          description: `NFT purchased! <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`,
+          buttonEnabled: true,
+        });
+
+        // Let success modal show FIRST, then load items
+        setTimeout(() => loadItemsForSale(), 500);
+
       } else {
-        setModal("Failed", "The transaction was reverted.", true);
+        setModal({
+          heading: "Failed",
+          description: "The transaction was reverted.",
+          buttonEnabled: true,
+        });
       }
     } catch (err) {
       console.error("❌ BUY error:", err);
-      setModal("Error", err.message || "Transaction failed.", true);
+
+      setModal({
+        heading: "Error",
+        description: err.message || "Transaction failed.",
+        buttonEnabled: true,
+      });
     }
   };
 
@@ -168,41 +185,19 @@ export default function Buy() {
   return (
     <div className="buy-page">
       <div className="buy-container mx-auto px-4 pb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 p-12">
+        <div className="nft-grid">
           {items.map((i) => (
-            <div
-              className="max-w-sm rounded overflow-hidden shadow-lg buy-card"
+            <NFTCard
               key={i.nftId}
-            >
-              <img src={i.image} alt="#" className="w-full" />
+              nft={i}
+              currency={currency}
+              showPrice={true}
+              showMore={true}
+              onMore={(n) => openPopup(n)}
+              ctaText="Buy"
+              onCta={(n) => buy(n)}
+            />
 
-              <div className="px-6 py-4">
-                <h5 className="font-bold text-xl mb-2">{i.name}</h5>
-                <p className="text-white-700 text-base">{i.description}</p>
-
-                <p className="text-[gold] font-extrabold text-base">
-                  Price: {i.price} {currency}
-                </p>
-
-                <span className="icon">
-                  <a
-                    className="text-[#0000EE] underline cursor-pointer text-sm"
-                    onClick={() => openPopup(i)}
-                  >
-                    more details
-                  </a>
-                </span>
-              </div>
-
-              <div className="px-6 pb-4">
-                <button
-                  className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded buy-sc-button"
-                  onClick={() => buy(i)}
-                >
-                  Buy
-                </button>
-              </div>
-            </div>
           ))}
         </div>
       </div>
@@ -211,5 +206,6 @@ export default function Buy() {
         <Detail setshowDetail={setShowDetail} nft_data={nftData} />
       )}
     </div>
+
   );
 }

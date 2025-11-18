@@ -32,7 +32,13 @@ export function Web3Providers({ children }) {
             <QueryClientProvider client={queryClient}>
                 <RainbowKitProvider
                     showRecentTransactions
-                    theme={darkTheme({ accentColor: "#7c3aed", borderRadius: "medium" })}
+                    theme={darkTheme({
+                        accentColor: '#7b3fe4',
+                        accentColorForeground: 'white',
+                        borderRadius: 'medium',
+                        // fontStack: 'system',
+                        // overlayBlur: 'small'
+                    })}
                 >
                     {children}
                 </RainbowKitProvider>

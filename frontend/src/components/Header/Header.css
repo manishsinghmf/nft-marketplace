@@ -1,6 +1,6 @@
-.connect-wallet-btn {
+.connect-wallet-btn button {
    background: linear-gradient(130.35deg, #6345ED 17.35%, #DC39FC 78.23%);
-   border-radius: 19px 19px 19px 19px;
+   border-radius: 19px 19px 19px 19px !important;
    width: auto !important;
 }
 

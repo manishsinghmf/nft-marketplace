@@ -3,3 +3,13 @@
   color: white;
   background: #14161B;
 }
+
+.rainbow-connect-wallet {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.rainbow-connect-wallet button {
+  border-radius: 19px 19px 19px 19px !important;
+}
