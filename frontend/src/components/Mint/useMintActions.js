@@ -23,9 +23,6 @@ export default function useMintActions({
     const navigate = useNavigate();
     const { openModal, setModal } = useModalStore();
 
-    /* -----------------------------------------------------
-     * VALIDATION
-     ----------------------------------------------------- */
     const validate = () => {
 
         if (!nftImage) {

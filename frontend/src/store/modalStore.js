@@ -5,19 +5,18 @@ export const useModalStore = create((set) => ({
         open: false,
         heading: "",
         description: "",
-        buttonEnabled: true,
+        loading: true,
         actionText: "OK",
         onAction: null,
         context: null,
     },
-
     /** ----------------------------------------------------------
      * openModal()
      * Supports BOTH formats:
      *   openModal("Title", "Description");
      *   openModal({ heading, description, ... });
      * --------------------------------------------------------- */
-    openModal: (headingOrObj, description = "", buttonEnabled = true, context = "general") => {
+    openModal: (headingOrObj, description = "", loading = true, context = "general") => {
         // Case 1 — called as: openModal("Title", "Desc")
         if (typeof headingOrObj === "string") {
             return set(() => ({
@@ -25,7 +24,7 @@ export const useModalStore = create((set) => ({
                     open: true,
                     heading: headingOrObj,
                     description,
-                    buttonEnabled,
+                    loading,
                     actionText: "OK",
                     onAction: null,
                     context,
@@ -42,7 +41,7 @@ export const useModalStore = create((set) => ({
                 open: true,
                 heading: payload.heading || "",
                 description: payload.description || "",
-                buttonEnabled: payload.buttonEnabled ?? true,
+                loading: payload.loading ?? true,
                 actionText: payload.actionText || "OK",
                 onAction: payload.onAction || null,
                 context: payload.context || "general",

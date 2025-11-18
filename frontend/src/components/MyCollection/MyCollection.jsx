@@ -65,8 +65,8 @@ export default function MyCollection() {
 
         setModal({
           heading: "Error",
-          description: "Failed to fetch your NFTs",
-          buttonEnabled: true
+          description: err?.message ? formatError(err) : "Failed to fetch your NFTs",
+          loading: true
         });
       }
     };
@@ -116,7 +116,6 @@ export default function MyCollection() {
       {listedNFTs.length > 0 && (
         <section className="w-full nft-section">
           <h2 className="dashboard-heading px-12 mt-6">Listed For Sale</h2>
-
           <div className="nft-grid">
             {listedNFTs.map((n) => (
               <NFTCard

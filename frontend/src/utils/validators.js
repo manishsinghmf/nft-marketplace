@@ -9,7 +9,7 @@ export function validateMintForm(nftInfo, openModal) {
             openModal({
                 heading: ALERT,
                 description: "All fields are required.",
-                buttonEnabled: true,
+                loading: true,
             });
             return false;
         }
@@ -19,7 +19,7 @@ export function validateMintForm(nftInfo, openModal) {
                 openModal({
                     heading: ALERT,
                     description: ATTRIBUTES_NUMERIC_VALUE_ERROR,
-                    buttonEnabled: true,
+                    loading: true,
                 });
                 return false;
             }
@@ -30,7 +30,7 @@ export function validateMintForm(nftInfo, openModal) {
                 openModal({
                     heading: ALERT,
                     description: ATTRIBUTES_NUMERIC_VALUE_ERROR,
-                    buttonEnabled: true,
+                    loading: true,
                 });
                 return false;
             }

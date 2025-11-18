@@ -105,7 +105,7 @@ export default function Buy() {
         return setModal({
           heading: "Insufficient Balance",
           description: `You need at least ${gasInfo.requiredEth.toFixed(5)} ${currency} to buy this NFT.`,
-          buttonEnabled: true,
+          loading: true,
         });
       }
 
@@ -113,7 +113,7 @@ export default function Buy() {
       setModal({
         heading: "Confirm Purchase",
         description: "Please confirm in your wallet...",
-        buttonEnabled: false,
+        loading: false,
       });
 
       const { tx } = await ContractService.buyMarketItem({
@@ -127,7 +127,7 @@ export default function Buy() {
       setModal({
         heading: "Transaction Sent",
         description: `View on explorer: <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`,
-        buttonEnabled: false,
+        loading: false,
       });
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
@@ -138,7 +138,7 @@ export default function Buy() {
         setModal({
           heading: "Success",
           description: `NFT purchased! <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`,
-          buttonEnabled: true,
+          loading: true,
         });
 
         // Let success modal show FIRST, then load items
@@ -148,7 +148,7 @@ export default function Buy() {
         setModal({
           heading: "Failed",
           description: "The transaction was reverted.",
-          buttonEnabled: true,
+          loading: true,
         });
       }
     } catch (err) {
@@ -156,8 +156,8 @@ export default function Buy() {
 
       setModal({
         heading: "Error",
-        description: err.message || "Transaction failed.",
-        buttonEnabled: true,
+        description: err?.message ? formatError(err) : "Transaction failed.",
+        loading: true,
       });
     }
   };

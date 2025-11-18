@@ -22,7 +22,7 @@ export default function NetworkModal({ setIsNetworkModalOpen }) {
                 openModal({
                     heading: "Wallet Not Connected",
                     description: "Please connect your wallet first.",
-                    buttonEnabled: true,
+                    loading: true,
                 });
                 close();
                 return;
@@ -37,7 +37,7 @@ export default function NetworkModal({ setIsNetworkModalOpen }) {
             openModal({
                 heading: "Network Switch Failed",
                 description: err?.message || "Could not switch network.",
-                buttonEnabled: true,
+                loading: true,
             });
 
             close();

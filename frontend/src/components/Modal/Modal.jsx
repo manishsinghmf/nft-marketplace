@@ -7,7 +7,7 @@ import { useModalStore } from "../../store/modalStore";
 
 export default function Modal() {
   const {
-    modal: { open, heading, description, ringLoaderEnabled, actionText, onAction },
+    modal: { open, heading, description, loading, actionText, onAction },
     closeModal,
   } = useModalStore();
 
@@ -37,7 +37,7 @@ export default function Modal() {
 
           <hr />
 
-          {!ringLoaderEnabled && (
+          {!loading && (
             <div className="py-8 inline-block w-full text-center">
               <RingLoader
                 color={"rgba(54, 215, 183, 1)"}
@@ -49,7 +49,7 @@ export default function Modal() {
 
           <div
             className={
-              !ringLoaderEnabled
+              !loading
                 ? "w-full modalContent top-2/3"
                 : "w-full modalContent inset-y-1/2 bottom-4"
             }
@@ -62,7 +62,7 @@ export default function Modal() {
 
           <div className="modalActions">
             <div className="actionsContainer">
-              {ringLoaderEnabled && (
+              {loading && (
                 <button className="deleteBtn" onClick={handleButtonClick}>
                   <b>{actionText || "OK"}</b>
                 </button>
