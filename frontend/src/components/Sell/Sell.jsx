@@ -1,6 +1,7 @@
 // src/components/Sell/Sell.jsx
 import { useEffect, useState } from "react";
 import "./Sell.css";
+import "../NFTCard/NFTCommon.css";
 
 import Detail from "../Detail/Detail";
 import NoItem from "../NoItem/NoItem";
@@ -125,8 +126,9 @@ export default function Sell() {
 
       {/* NFT List */}
       {items.length > 0 ? (
-        <div className="sell-page">
-          <div className="sell-container mx-auto px-4 py-8">
+        <div className="page-wrapper">
+          <div className="nft-section">
+            <h2 className="dashboard-heading px-12 mt-6">List Your NFTs</h2>
             <div className="nft-grid">
               {items.map((n) => (
                 <NFTCard
@@ -137,7 +139,6 @@ export default function Sell() {
                   ctaText="Sell"
                   onCta={(n) => openPricePopup(n)}
                 />
-
               ))}
             </div>
           </div>

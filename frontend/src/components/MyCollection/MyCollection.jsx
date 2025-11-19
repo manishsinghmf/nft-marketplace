@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import "./MyCollection.css";
+import "../NFTCard/NFTCommon.css";
 
 import Detail from "../Detail/Detail";
 import NoItem from "../NoItem/NoItem";
@@ -9,6 +10,7 @@ import { ContractService } from "../../services/contractService";
 import { CONTRACTS } from "../../config/contracts";
 import { useModalStore } from "../../store/modalStore";
 import NFTCard from "../NFTCard/NFTCard";
+import { formatError } from "../../utils/formatError";
 
 export default function MyCollection() {
   const { address, isConnected, chainId } = useAccount();
@@ -90,11 +92,11 @@ export default function MyCollection() {
     );
 
   return (
-    <div className="dashboard-create-item-containers">
+    <div className="dashboard-create-item-containers page-wrapper">
 
       {/* Owned NFTs */}
       {ownedNFTs.length > 0 && (
-        <section className="w-full nft-section">
+        <section className="nft-section">
           <h2 className="dashboard-heading px-12 mt-6">My NFT Collection</h2>
           <div className="nft-grid">
             {ownedNFTs.map((n) => (

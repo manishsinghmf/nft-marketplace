@@ -1,5 +1,6 @@
 // src/components/Buy/Buy.jsx
 import "./Buy.css";
+import "../NFTCard/NFTCommon.css";
 import { useEffect, useState } from "react";
 
 import NoItem from "../NoItem/NoItem";
@@ -14,6 +15,7 @@ import { useModalStore } from "../../store/modalStore";
 
 import { CONTRACTS } from "../../config/contracts";
 import { CONTRACT_FUNCTIONS } from "../../config/contractFunctions";
+import { formatError } from "../../utils/formatError";
 
 export default function Buy() {
   const [items, setItems] = useState([]);
@@ -183,8 +185,9 @@ export default function Buy() {
   }
 
   return (
-    <div className="buy-page">
-      <div className="buy-container mx-auto px-4 pb-8">
+    <div className="page-wrapper">
+      <div className="nft-section">
+        <h2 className="dashboard-heading px-12 mt-6">Buy NFTs</h2>
         <div className="nft-grid">
           {items.map((i) => (
             <NFTCard
@@ -197,7 +200,6 @@ export default function Buy() {
               ctaText="Buy"
               onCta={(n) => buy(n)}
             />
-
           ))}
         </div>
       </div>

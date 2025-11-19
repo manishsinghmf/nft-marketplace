@@ -1,0 +1,34 @@
+.page-wrapper {
+    width: 100%;
+    background-color: #1e1e1e;
+    min-height: 100vh;
+    color: white;
+}
+
+/* ----------------------------------
+   SECTION WRAPPER
+---------------------------------- */
+.nft-section {
+    width: 100%;
+    padding-bottom: 3rem;
+}
+
+/* ----------------------------------
+   GRID (shared across all pages)
+---------------------------------- */
+.nft-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 2rem;
+    padding: 3rem 3rem 1rem;
+}
+
+/* ----------------------------------
+   HEADINGS
+---------------------------------- */
+.dashboard-heading {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: white;
+    text-align: left;
+}
