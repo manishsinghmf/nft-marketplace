@@ -5,13 +5,6 @@
   color: white;
 }
 
-/* Inner layout */
-.sell-container {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
 /* LISTING PRICE BOX */
 .listing-price {
   padding: 2rem 0;
