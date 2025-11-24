@@ -1,10 +1,7 @@
 // src/services/ipfsService.js
 import axios from "axios";
-import {
-    PINATA_FILE_UPLOAD_URL,
-    PINATA_JSON_UPLOAD_URL,
-    PINATA_GATEWAY_BASE_URL,
-} from "../utils/commonUtils";
+import { IPFS_CONFIG } from "../config/ipfsConfig";
+
 
 /**
  * Simple IPFS helpers using Pinata (same endpoints you had).
@@ -15,11 +12,11 @@ export const IpfsService = {
         try {
             const fd = new FormData();
             fd.append("file", file);
-            const res = await axios.post(PINATA_FILE_UPLOAD_URL, fd, {
+            const res = await axios.post(IPFS_CONFIG.FILE_UPLOAD_URL, fd, {
                 headers: {
                     "Content-Type": "multipart/form-data",
-                    pinata_api_key: import.meta.env.VITE_REACT_APP_PINATA_API_KEY,
-                    pinata_secret_api_key: import.meta.env.VITE_REACT_APP_PINATA_SECRET_KEY,
+                    pinata_api_key: IPFS_CONFIG.API_KEY,
+                    pinata_secret_api_key: IPFS_CONFIG.API_SECRET,
                 },
             });
             return res.data?.IpfsHash ?? null;
@@ -31,11 +28,11 @@ export const IpfsService = {
 
     async uploadJSON(json) {
         try {
-            const res = await axios.post(PINATA_JSON_UPLOAD_URL, json, {
+            const res = await axios.post(IPFS_CONFIG.JSON_UPLOAD_URL, json, {
                 headers: {
                     "Content-Type": "application/json",
-                    pinata_api_key: import.meta.env.VITE_REACT_APP_PINATA_API_KEY,
-                    pinata_secret_api_key: import.meta.env.VITE_REACT_APP_PINATA_SECRET_KEY,
+                    pinata_api_key: IPFS_CONFIG.API_KEY,
+                    pinata_secret_api_key: IPFS_CONFIG.API_SECRET,
                 },
             });
             return res.data?.IpfsHash ?? null;
