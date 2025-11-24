@@ -97,20 +97,6 @@ export default function Header() {
             {/* Desktop Menu */}
             <div className="mr-4 hidden lg:block">{navList}</div>
 
-            {/* Network Name */}
-            {isConnected && chainConfig && (
-              <Button variant="gradient" size="sm" className="connect-wallet-btn hidden lg:inline-block">
-                {chainConfig.name}
-              </Button>
-            )}
-
-            {/* Address */}
-            {isConnected && (
-              <Button variant="gradient" size="sm" className="connect-wallet-btn hidden lg:inline-block">
-                {shortAddress}
-              </Button>
-            )}
-
             {/* RainbowKit Desktop */}
             <div className="connect-wallet-btn hidden lg:inline-block">
               <ConnectButton
