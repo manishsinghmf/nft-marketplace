@@ -140,64 +140,7 @@ textarea {
   padding: 5px;
 }
 
-@media only screen and (max-width: 950px) {
-  textarea {
-    width: 50%;
-  }
 
-  .uploadFile {
-    width: 49%;
-  }
-
-  .sc-button {
-    width: 50%;
-  }
-
-}
-
-@media only screen and (max-width: 820px) {
-  textarea {
-    width: 60%;
-  }
-
-  .uploadFile {
-    width: 59%;
-  }
-
-  .sc-button {
-    width: 60%;
-  }
-
-
-}
-
-@media only screen and (max-width: 768px) {
-  textarea {
-    width: 65%;
-  }
-
-  .uploadFile {
-    width: 64%;
-  }
-
-  .sc-button {
-    width: 65%;
-  }
-}
-
-@media only screen and (max-width: 670px) {
-  textarea {
-    width: 80%;
-  }
-
-}
-
-@media only screen and (max-width: 630px) {
-  textarea {
-    width: 95%;
-  }
-
-}
 
 .create-item-container {
   background-color: #282c34;
@@ -212,10 +155,10 @@ textarea {
 
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 input[type=number] {
-    -moz-appearance: textfield;
+  -moz-appearance: textfield;
 }

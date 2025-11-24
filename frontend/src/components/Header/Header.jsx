@@ -47,45 +47,32 @@ export default function Header() {
   const shortAddress =
     address && `${address.slice(0, 4)}...${address.slice(-4)}`;
 
-  /** === OLD INLINE MENU === */
   const navList = (
     <ul className="mb-4 mt-2 flex flex-col gap-2 lg:mb-0 lg:mt-0 lg:flex-row lg:items-center lg:gap-6">
-      <Typography as="li" variant="small" className="p-1 font-normal">
-        <Link onClick={() => setOpenNav(false)} to="/" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>Dashboard</b>
-        </Link>
-      </Typography>
-
-      <Typography as="li" variant="small" className="p-1 font-normal">
-        <Link onClick={() => setOpenNav(false)} to="/my-collection" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>My Collection</b>
-        </Link>
-      </Typography>
-
-      <Typography as="li" variant="small" className="p-1 font-normal">
-        <Link onClick={() => setOpenNav(false)} to="/mint" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>Mint</b>
-        </Link>
-      </Typography>
-
-      <Typography as="li" variant="small" className="p-1 font-normal">
-        <Link onClick={() => setOpenNav(false)} to="/buy" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>Buy</b>
-        </Link>
-      </Typography>
-
-      <Typography as="li" variant="small" className="p-1 font-normal">
-        <Link onClick={() => setOpenNav(false)} to="/sell" className="flex items-center text-base hover:text-[#ee82ee]">
-          <b>Sell</b>
-        </Link>
-      </Typography>
+      {[
+        { to: "/", label: "Dashboard" },
+        { to: "/my-collection", label: "My Collection" },
+        { to: "/mint", label: "Mint" },
+        { to: "/buy", label: "Buy" },
+        { to: "/sell", label: "Sell" },
+      ].map((link) => (
+        <Typography
+          as="li"
+          variant="small"
+          className="p-1 font-normal"
+          key={link.to}
+        >
+          <Link
+            onClick={() => setOpenNav(false)}
+            to={link.to}
+            className="flex items-center text-base hover:text-[#ee82ee]"
+          >
+            <b>{link.label}</b>
+          </Link>
+        </Typography>
+      ))}
     </ul>
   );
-
-  const openNetworkModal = () => {
-    setOpenNav(false);
-    setNetworkModalOpen(true);
-  };
 
   /** Auto close on desktop resize (same as old code) */
   useEffect(() => {
@@ -153,7 +140,6 @@ export default function Header() {
           </div>
         </div>
 
-        {/* === MOBILE COLLAPSE (same as old code, just updated variables) === */}
         <Collapse open={openNav} className="lg:hidden">
 
           <div>
