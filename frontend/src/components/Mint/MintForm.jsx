@@ -65,7 +65,7 @@ export default function MintForm({
             </div>
 
             <textarea
-                className="form-control col-12 row-3 input-group text"
+                className="form-control col-12 row-3 input-group text mt-5"
                 placeholder="NFT Description"
                 name="description"
                 value={nftInfo.description}
