@@ -1,41 +1,53 @@
-import { ALERT, ATTRIBUTES_NUMERIC_VALUE_ERROR } from "../utils/messageConstants";
+// src/components/Mint/validators.mint.js
 
 /**
- * Validates mint form data.
+ * Pure validation logic for Mint form.
+ * Returns:
+ *   { valid: true }
+ * or {
+ *   valid: false,
+ *   heading: "...",
+ *   message: "..."
+ * }
  */
-export function validateMintForm(nftInfo, openModal) {
-    for (const [key, value] of Object.entries(nftInfo)) {
-        if (!value || value === "") {
-            openModal({
-                heading: ALERT,
-                description: "All fields are required.",
-                loading: true,
-            });
-            return false;
+export function validateMintData(nftInfo, nftImage) {
+    if (!nftImage) {
+        return {
+            valid: false,
+            heading: "Missing Image",
+            message: "Upload an image.",
+        };
+    }
+
+    if (!nftInfo.name || !nftInfo.description) {
+        return {
+            valid: false,
+            heading: "Missing Fields",
+            message: "Name & description required.",
+        };
+    }
+
+    const numeric = ["quantity", "rarity", "style", "beauty", "comedy", "action"];
+
+    for (const key of numeric) {
+        const value = nftInfo[key];
+
+        if (value === "" || value === null || isNaN(Number(value))) {
+            return {
+                valid: false,
+                heading: "Invalid Input",
+                message: `${key} must be a valid number`,
+            };
         }
 
-        if (key === "quantity") {
-            if (!(value > 0 && value <= 100)) {
-                openModal({
-                    heading: ALERT,
-                    description: ATTRIBUTES_NUMERIC_VALUE_ERROR,
-                    loading: true,
-                });
-                return false;
-            }
-        }
-
-        if (!["name", "description", "quantity"].includes(key)) {
-            if (!(value > 0 && value <= 10)) {
-                openModal({
-                    heading: ALERT,
-                    description: ATTRIBUTES_NUMERIC_VALUE_ERROR,
-                    loading: true,
-                });
-                return false;
-            }
+        if (Number(value) <= 0) {
+            return {
+                valid: false,
+                heading: "Invalid Input",
+                message: `${key} must be > 0`,
+            };
         }
     }
 
-    return true;
+    return { valid: true };
 }

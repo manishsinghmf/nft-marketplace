@@ -1,10 +1,10 @@
 import axios from "axios";
-import { PINATA_GATEWAY_BASE_URL } from "./commonUtils";
 import { formatUnits, parseUnits } from "viem";
+import { IPFS_CONFIG } from "../config/ipfsConfig";
 
 export function mapformat(old_format) {
   let new_format = {}
-  new_format.image = PINATA_GATEWAY_BASE_URL + old_format.image;
+  new_format.image = IPFS_CONFIG.GATEWAY + old_format.image;
   new_format.name = old_format.name;
   new_format.description = old_format.description;
   new_format.attributes = [

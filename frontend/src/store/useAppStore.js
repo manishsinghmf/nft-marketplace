@@ -1,8 +1,7 @@
 // src/store/useAppStore.js
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
 
-const useAppStore = create((set) => ({
-    // 🔗 Wallet + network state
+export const appStoreInstance = createStore((set) => ({
     walletConnected: null,
     walletEthBalance: "0",
     isChainSupported: false,
@@ -10,21 +9,18 @@ const useAppStore = create((set) => ({
     networkSelected: null,
     isNetworkModalOpen: false,
 
-    // 🧩 Contract instances
     nftContract: null,
     marketplaceContract: null,
 
-    // ⚙️ Setters
-    setWalletConnected: (val) => set({ walletConnected: val }),
-    setWalletEthBalance: (val) => set({ walletEthBalance: val }),
-    setIsChainSupported: (val) => set({ isChainSupported: val }),
-    setChainConfig: (val) => set({ chainConfig: val }),
-    setNetworkSelected: (val) => set({ networkSelected: val }),
-    setIsNetworkModalOpen: (val) => set({ isNetworkModalOpen: val }),
+    setWalletConnected: (v) => set({ walletConnected: v }),
+    setWalletEthBalance: (v) => set({ walletEthBalance: v }),
+    setIsChainSupported: (v) => set({ isChainSupported: v }),
+    setChainConfig: (config) => set({ chainConfig: config }),
+    setNetworkSelected: (v) => set({ networkSelected: v }),
+    setIsNetworkModalOpen: (v) => set({ isNetworkModalOpen: v }),
 
-    // ✅ Contract setters
-    setNftContract: (contract) => set({ nftContract: contract }),
-    setMarketplaceContract: (contract) => set({ marketplaceContract: contract }),
+    setNftContract: (c) => set({ nftContract: c }),
+    setMarketplaceContract: (c) => set({ marketplaceContract: c }),
 }));
 
-export default useAppStore;
+export default appStoreInstance;
