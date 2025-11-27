@@ -15,7 +15,6 @@ import { CONTRACTS } from "../../config/contracts";
 import { formatEther } from "viem";
 
 export default function Sell() {
-  console.log("Sell Render");
 
   const [showDetail, setShowDetail] = useState(false);
   const [showPricePopup, setShowPricePopup] = useState(false);

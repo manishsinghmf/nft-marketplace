@@ -19,7 +19,6 @@ import { CONTRACT_FUNCTIONS } from "../../config/contractFunctions";
 import { formatError } from "../../utils/formatError";
 
 export default function Buy() {
-  console.log("Buy Render");
 
   const [items, setItems] = useState([]);
   const [showDetail, setShowDetail] = useState(false);

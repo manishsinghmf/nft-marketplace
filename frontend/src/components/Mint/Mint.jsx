@@ -13,8 +13,6 @@ import useMintTx from "../../hooks/useMintTx";
 import { CONTRACTS } from "../../config/contracts";
 
 export default function Mint() {
-
-  console.log("Mint Render")
   const { chainId, isConnected, address } = useAccount();
 
   const publicClient = usePublicClient();
