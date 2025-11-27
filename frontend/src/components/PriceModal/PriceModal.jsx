@@ -1,13 +1,13 @@
 // src/components/PriceModal/PriceModal.jsx
+import React, { useState, useMemo, useCallback } from "react";
+import ReactDOM from "react-dom";
 import "./PriceModal.css";
-import { useState } from "react";
 
 import { useAccount, useBalance, usePublicClient, useWalletClient } from "wagmi";
 import { parseEther } from "viem";
 
 import { CONTRACTS } from "../../config/contracts";
 import { CONTRACT_FUNCTIONS } from "../../config/contractFunctions";
-
 import { useModalStore } from "../../store/modalStore";
 
 import { ContractService } from "../../services/contractService";
@@ -25,60 +25,50 @@ export default function PriceModal({
     const { address, chainId } = useAccount();
     const publicClient = usePublicClient();
     const { data: walletClient } = useWalletClient();
-
     const { data: balanceData } = useBalance({ address });
 
-    const { openModal, setModal, closeModal } = useModalStore();
+    const openModal = useModalStore((s) => s.openModal);
+    const setModal = useModalStore((s) => s.setModal);
 
-    const chainConfig = CONTRACTS[chainId];
-    const currency = chainConfig?.name || "ETH";
+    const chainConfig = useMemo(() => CONTRACTS[chainId] || null, [chainId]);
+    const currency = chainConfig?.name ?? "ETH";
 
-    const handleCancel = () => {
+    const portalRoot = document.getElementById("modal-root");
+    if (!portalRoot) return null;
+
+    /** ---------------------------------------------------
+     * INPUT HANDLERS
+     --------------------------------------------------- */
+    const handleCancel = useCallback(() => {
         setShowPricePopup(false);
         setPrice("");
-    };
+    }, [setShowPricePopup]);
 
-    const handlePriceInput = (e) => {
+    const handlePriceInput = useCallback((e) => {
         const val = e.target.value;
         if (/^\d*\.?\d*$/.test(val)) setPrice(val);
-    };
+    }, []);
 
-    /** -----------------------------------------------------
-     * CONFIRM SELL LISTING
-     ------------------------------------------------------ */
-    const handleConfirm = async () => {
-
-        // Close modal UI
+    /** ---------------------------------------------------
+     * CONFIRM HANDLER (Kept exactly same logic)
+     --------------------------------------------------- */
+    const handleConfirm = useCallback(async () => {
         setShowPricePopup(false);
-        if (!chainConfig) {
-            return openModal(
-                "Unsupported Network",
-                "Please switch to a supported chain.",
-                true
-            );
-        }
+
+        if (!chainConfig)
+            return openModal("Unsupported Network", "Please switch network.", true);
 
         const numericPrice = Number(price);
-        console.log("numeric price", numericPrice);
-        if (!numericPrice || numericPrice <= 0) {
-            return openModal(
-                "Invalid Price",
-                "Price must be greater than 0.",
-                true
-            );
-        }
+        if (!numericPrice || numericPrice <= 0)
+            return openModal("Invalid Price", "Price must be greater than 0.", true);
 
-        console.log("Listing price", listingFee);
-        if (numericPrice < Number(listingFee)) {
+        if (numericPrice < Number(listingFee))
             return openModal(
                 "Invalid Price",
                 `Price cannot be lower than listing fee (${listingFee} ${currency}).`,
                 true
             );
-        }
 
-
-        /** Step 1 — Show initial modal */
         openModal(
             "Preparing Sell Transaction",
             "Checking approval, estimating gas...",
@@ -89,37 +79,32 @@ export default function PriceModal({
             const priceWei = parseEther(price);
             const listingFeeWei = parseEther(String(listingFee));
 
-            /* ---------------------------------------------
-             * STEP 1 — APPROVAL (ERC-1155)
-             --------------------------------------------- */
+            // STEP 1: approval
             const isApproved = await ContractService.checkApproval({
                 chainId,
                 owner: address,
                 operator: chainConfig.marketplace.address,
                 publicClient,
-                account: address
+                account: address,
             });
 
-            console.log("isApproved", isApproved);
             if (!isApproved) {
-                setModal(
-                    "Approval Required",
-                    "Confirm approval in your wallet...",
-                    false
-                );
-
-                const approvalTx = await ContractService.approveAll({
-                    chainId,
-                    operator: chainConfig.marketplaceAddress,
-                    walletClient: publicClient, // walletClient auto used inside write function
+                setModal({
+                    heading: "Approval Required",
+                    description: "Confirm approval in your wallet...",
+                    loading: false,
                 });
 
-                await publicClient.waitForTransactionReceipt({ hash: approvalTx });
+                const tx = await ContractService.approveAll({
+                    chainId,
+                    operator: chainConfig.marketplaceAddress,
+                    walletClient,
+                });
+
+                await publicClient.waitForTransactionReceipt({ hash: tx });
             }
 
-            /* ---------------------------------------------
-             * STEP 2 — GAS ESTIMATION
-             --------------------------------------------- */
+            // STEP 2: gas estimate
             const gasInfo = await estimateTotalGasCost({
                 chainId,
                 contractName: "marketplace",
@@ -130,33 +115,29 @@ export default function PriceModal({
                 value: listingFeeWei,
             });
 
-            /* ---------------------------------------------
-             * STEP 3 — BALANCE CHECK
-             --------------------------------------------- */
             const userBalance = balanceData?.value || 0n;
 
-            console.log("userBalance", userBalance)
             if (
                 !BalanceService.hasEnoughBalance({
                     userBalanceWei: userBalance,
                     requiredWei: gasInfo.requiredWei,
                 })
             ) {
-                setModal(
-                    "Insufficient Balance",
-                    `You need approx ${gasInfo.requiredEth.toFixed(
+                return setModal({
+                    heading: "Insufficient Balance",
+                    description: `You need approx ${gasInfo.requiredEth.toFixed(
                         5
-                    )} ${currency} to list this NFT.`,
-                    true
-                );
-                return;
+                    )} ${currency}.`,
+                    loading: true,
+                });
             }
 
-            /* ---------------------------------------------
-             * STEP 4 — SUBMIT LISTING
-             --------------------------------------------- */
-            console.log("submit transaction..")
-            setModal("Listing NFT", "Submitting transaction...", false);
+            // STEP 3: submit tx
+            setModal({
+                heading: "Listing NFT",
+                description: "Submitting transaction...",
+                loading: false,
+            });
 
             const { tx } = await ContractService.createMarketItem({
                 chainId,
@@ -164,79 +145,94 @@ export default function PriceModal({
                 priceWei,
                 amount: nftData.amount,
                 listingFeeWei,
-                walletClient: walletClient,
+                walletClient,
             });
 
             const explorerUrl = chainConfig.explorerUrl + tx;
 
-            setModal(
-                "Transaction Sent",
-                `View on explorer: <a href="${explorerUrl}" target="_blank">${tx}</a>`
-            );
-
-            /* ---------------------------------------------
-             * STEP 5 — WAIT FOR RECEIPT
-             --------------------------------------------- */
-            const receipt = await publicClient.waitForTransactionReceipt({
-                hash: tx,
+            setModal({
+                heading: "Transaction Sent",
+                description: `View: <a href="${explorerUrl}" target="_blank">${tx}</a>`,
+                loading: true,
             });
-            console.log("receipt.status", receipt.status)
+
+            const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
+
             if (receipt.status === "success") {
-                setModal(
-                    "NFT Listed Successfully!",
-                    `View: <a href="${explorerUrl}" target="_blank">${tx}</a>`,
-                    true
-                );
+                setModal({
+                    heading: "NFT Listed Successfully!",
+                    description: `View on explorer: <a href="${explorerUrl}" target="_blank">${tx}</a>`,
+                    loading: true,
+                });
                 await refetchNFTs?.();
             } else {
-                setModal("Failed", "The transaction was reverted.", true);
+                setModal({
+                    heading: "Failed",
+                    description: "The transaction was reverted.",
+                    loading: true,
+                });
             }
         } catch (err) {
             console.error("Sell Error:", err);
-            setModal(
-                "Sell Transaction Failed",
-                err.message || "Unexpected error occurred",
-                true
-            );
+            setModal({
+                heading: "Sell Transaction Failed",
+                description: err.message || "Unexpected error occurred",
+                loading: true,
+            });
         }
-    };
+    }, [
+        setShowPricePopup,
+        chainConfig,
+        address,
+        publicClient,
+        walletClient,
+        price,
+        listingFee,
+        currency,
+        balanceData?.value,
+        nftData,
+        openModal,
+        setModal,
+        refetchNFTs
+    ]);
 
-    return (
-        <div className="price-overlay">
-            <div className="price-popup">
-                <h2 className="text-2xl font-bold mb-4 text-center">
-                    Sell NFT
-                </h2>
-                <hr />
+    /** ---------------------------------------------------
+     * JSX CONTENT — Updated UI layout
+     --------------------------------------------------- */
+    const content = (
+        <>
+            {/* Dark background */}
+            <div className="price-overlay-bg" onClick={handleCancel} />
 
-                <div className="mb-4 price-param text-center mt-4">
-                    <span>Enter Price (in {currency})</span>
-                    <br />
-                    <input
-                        type="number"
-                        className="form-control price-input mt-3"
-                        placeholder={`Enter price in ${currency}`}
-                        value={price}
-                        onChange={handlePriceInput}
-                    />
-                </div>
+            {/* Center wrapper */}
+            <div className="price-modal-wrapper">
+                <div className="price-popup">
+                    <h2 className="text-2xl font-bold text-center mb-4">Sell NFT</h2>
+                    <hr />
 
-                <div className="flex justify-center gap-4 mt-6">
-                    <button
-                        className="bg-green-600 hover:bg-green-800 text-white py-2 px-4 rounded"
-                        onClick={handleConfirm}
-                    >
-                        Confirm
-                    </button>
+                    <div className="price-content">
+                        <span>Enter Price (in {currency})</span>
+                        <input
+                            type="number"
+                            className="price-input"
+                            placeholder={`Enter price in ${currency}`}
+                            value={price}
+                            onChange={handlePriceInput}
+                        />
+                    </div>
 
-                    <button
-                        className="bg-red-600 hover:bg-red-800 text-white py-2 px-4 rounded"
-                        onClick={handleCancel}
-                    >
-                        Cancel
-                    </button>
+                    <div className="price-footer">
+                        <button className="btn-confirm" onClick={handleConfirm}>
+                            Confirm
+                        </button>
+                        <button className="btn-cancel" onClick={handleCancel}>
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
+
+    return ReactDOM.createPortal(content, portalRoot);
 }

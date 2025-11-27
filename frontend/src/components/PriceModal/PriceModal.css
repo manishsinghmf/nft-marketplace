@@ -1,50 +1,100 @@
-.price-overlay {
+/* FULLSCREEN BACKDROP */
+.price-overlay-bg {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+}
+
+/* WRAPPER CENTERS THE POPUP */
+.price-modal-wrapper {
+    position: fixed;
+    inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 9999;
+    padding: 20px;
+    z-index: 1001;
+    pointer-events: none;
 }
 
+/* POPUP CARD */
 .price-popup {
-    background-color: white;
+    pointer-events: auto;
+    background: white;
     color: black;
+    width: 100%;
     max-width: 500px;
+    max-height: 80vh;
     padding: 20px;
-    box-shadow: 4px 4px 60px rgba(99, 69, 237, 0.15);
     border-radius: 12px;
+    box-shadow: 4px 4px 60px rgba(99, 69, 237, 0.15);
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
-.price-button {
-    border-radius: 19px 19px 19px 19px;
-    font-size: 1rem;
-}
-
-.price-param {
-    font-size: 20px;
+/* CONTENT AREA (scrollable if needed) */
+.price-content {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    font-size: 18px;
 }
 
 .price-input {
+    margin-top: 12px;
     background: white;
     border: 2px solid burlywood;
-    height: 65px;
-    padding: 0 35px;
-    border-radius: 7px;
-    margin-bottom: 20px;
+    height: 60px;
+    padding: 0 20px;
+    border-radius: 8px;
+    font-size: 18px;
 }
 
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
+/* FOOTER BUTTONS */
+.price-footer {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.btn-confirm {
+    background: #059669;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-confirm:hover {
+    background: #047857;
+}
+
+.btn-cancel {
+    background: #dc2626;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-cancel:hover {
+    background: #b91c1c;
+}
+
+/* Input spinner fix */
+input::-webkit-inner-spin-button,
+input::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-input[type=number] {
+input[type="number"] {
     -moz-appearance: textfield;
 }
