@@ -47,6 +47,9 @@ export default function PriceModal({
      * CONFIRM SELL LISTING
      ------------------------------------------------------ */
     const handleConfirm = async () => {
+
+        // Close modal UI
+        setShowPricePopup(false);
         if (!chainConfig) {
             return openModal(
                 "Unsupported Network",
@@ -56,6 +59,7 @@ export default function PriceModal({
         }
 
         const numericPrice = Number(price);
+        console.log("numeric price", numericPrice);
         if (!numericPrice || numericPrice <= 0) {
             return openModal(
                 "Invalid Price",
@@ -64,6 +68,7 @@ export default function PriceModal({
             );
         }
 
+        console.log("Listing price", listingFee);
         if (numericPrice < Number(listingFee)) {
             return openModal(
                 "Invalid Price",
@@ -72,8 +77,6 @@ export default function PriceModal({
             );
         }
 
-        // Close modal UI
-        setShowPricePopup(false);
 
         /** Step 1 — Show initial modal */
         openModal(
@@ -97,6 +100,7 @@ export default function PriceModal({
                 account: address
             });
 
+            console.log("isApproved", isApproved);
             if (!isApproved) {
                 setModal(
                     "Approval Required",
@@ -131,24 +135,27 @@ export default function PriceModal({
              --------------------------------------------- */
             const userBalance = balanceData?.value || 0n;
 
+            console.log("userBalance", userBalance)
             if (
                 !BalanceService.hasEnoughBalance({
                     userBalanceWei: userBalance,
                     requiredWei: gasInfo.requiredWei,
                 })
             ) {
-                return setModal(
+                setModal(
                     "Insufficient Balance",
                     `You need approx ${gasInfo.requiredEth.toFixed(
                         5
                     )} ${currency} to list this NFT.`,
                     true
                 );
+                return;
             }
 
             /* ---------------------------------------------
              * STEP 4 — SUBMIT LISTING
              --------------------------------------------- */
+            console.log("submit transaction..")
             setModal("Listing NFT", "Submitting transaction...", false);
 
             const { tx } = await ContractService.createMarketItem({
@@ -173,7 +180,7 @@ export default function PriceModal({
             const receipt = await publicClient.waitForTransactionReceipt({
                 hash: tx,
             });
-
+            console.log("receipt.status", receipt.status)
             if (receipt.status === "success") {
                 setModal(
                     "NFT Listed Successfully!",
