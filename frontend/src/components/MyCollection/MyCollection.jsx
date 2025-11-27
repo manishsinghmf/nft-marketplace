@@ -13,7 +13,7 @@ import NFTCard from "../NFTCard/NFTCard";
 import { formatError } from "../../utils/formatError";
 
 export default function MyCollection() {
-  console.log("Collection render")
+
   const { address, isConnected, chainId } = useAccount();
   const publicClient = usePublicClient();
 
