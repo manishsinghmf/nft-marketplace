@@ -25,13 +25,13 @@ export default function Header() {
 
   const { chainConfig } = useAppStore();
   const { setNetworkModalOpen } = useModalStore();
-  const { address, isConnected, chainId } = useWallet();
+  const { address, isConnected, chainId, activeChain } = useWallet();
 
+  // const networkSelected = activeChain.name;
   /** Update chain config automatically */
   useEffect(() => {
     if (!chainId) return;
     const chain = supportedChains.find((c) => c.id === chainId);
-
     if (chain) {
       useAppStore.setState({
         chainConfig: {
@@ -97,6 +97,14 @@ export default function Header() {
             {/* Desktop Menu */}
             <div className="mr-4 hidden lg:block">{navList}</div>
 
+            {/* {networkSelected && <Button
+              variant="gradient"
+              size="sm"
+              className="connect-wallet-btn
+                hidden lg:inline-block hover:text-black focus:text-black active:text-black"
+            >
+              {networkSelected}
+            </Button>} */}
             {/* RainbowKit Desktop */}
             <div className="connect-wallet-btn hidden lg:inline-block">
               <ConnectButton

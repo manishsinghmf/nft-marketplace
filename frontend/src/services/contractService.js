@@ -1,8 +1,8 @@
 // src/services/contractService.js
 import { readFromContract, writeToContract } from "../hooks/useContract";
 import { IpfsService } from "./ipfsService";
-import { CONTRACTS } from "../config/contracts";
 import CONTRACT_FUNCTIONS from "../config/contractFunctions";
+import { IPFS_CONFIG } from "../config/ipfsConfig";
 
 /**
  * Central ContractService
@@ -76,7 +76,7 @@ export const ContractService = {
         const NEW = "https://beige-used-manatee-520.mypinata.cloud/ipfs/";
         // If IPFS path (ipfs://) convert to gateway if desired
         if (uri.startsWith("ipfs://")) {
-            return uri.replace("ipfs://", PINATA_GATEWAY_BASE_URL || "https://ipfs.io/ipfs/");
+            return uri.replace("ipfs://", IPFS_CONFIG.GATEWAY || "https://ipfs.io/ipfs/");
         }
         return uri.startsWith(OLD) ? uri.replace(OLD, NEW) : uri;
     },

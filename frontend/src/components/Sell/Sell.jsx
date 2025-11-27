@@ -1,5 +1,5 @@
 // src/components/Sell/Sell.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import "./Sell.css";
 import "../NFTCard/NFTCommon.css";
 
@@ -15,6 +15,8 @@ import { CONTRACTS } from "../../config/contracts";
 import { formatEther } from "viem";
 
 export default function Sell() {
+  console.log("Sell Render");
+
   const [showDetail, setShowDetail] = useState(false);
   const [showPricePopup, setShowPricePopup] = useState(false);
   const [nftData, setNftData] = useState(null);
@@ -23,24 +25,28 @@ export default function Sell() {
 
   const { address, isConnected, chainId } = useAccount();
   const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
-  const { openModal, setModal, closeModal } = useModalStore();
 
-  const chainConfig = CONTRACTS[chainId];
+  // Zustand optimized selectors
+  const openModal = useModalStore((s) => s.openModal);
+  const setModal = useModalStore((s) => s.setModal);
+  const closeModal = useModalStore((s) => s.closeModal);
+
+  // Memoized chain config
+  const chainConfig = useMemo(() => CONTRACTS[chainId], [chainId]);
   const currency = chainConfig?.name || "ETH";
 
   /** --------------------------------------------------------
    * Load listing fee
    -------------------------------------------------------- */
   useEffect(() => {
-    const loadListingFee = async () => {
-      if (!publicClient || !chainId) return;
+    if (!publicClient || !chainId) return;
 
+    const loadListingFee = async () => {
       try {
         const feeWei = await ContractService.getListingPrice({
           chainId,
           publicClient,
-          address
+          address,
         });
 
         setListingPrice(formatEther(feeWei));
@@ -51,15 +57,15 @@ export default function Sell() {
     };
 
     loadListingFee();
-  }, [chainId]);
+  }, [publicClient, chainId, address]);
 
   /** --------------------------------------------------------
-   * Load user-owned NFTs (metadata resolved)
+   * Load NFTs owned by the user
    -------------------------------------------------------- */
-  const fetchUserNFTs = async () => {
+  const fetchUserNFTs = useCallback(async () => {
     if (!isConnected || !publicClient || !address) return;
 
-    openModal("Loading NFTs...", "Fetching your collection...");
+    openModal("Loading NFTs...", "Fetching your collection...", true, "loader");
 
     try {
       const resolved = await ContractService.fetchAndResolveNFTs({
@@ -68,42 +74,50 @@ export default function Sell() {
         publicClient,
         address,
       });
-
       setItems(resolved || []);
     } catch (err) {
       console.error("fetchUserNFTs err:", err);
       setItems([]);
-      setModal("Error", "Failed to load NFTs.", true);
+
+      setModal({
+        heading: "Error",
+        description: "Failed to load NFTs.",
+        loading: true,
+      });
     } finally {
-      closeModal();
+      closeModal("loader");
     }
-  };
+  }, [
+    isConnected,
+    publicClient,
+    address,
+    chainId,
+    openModal,
+    closeModal,
+    setModal,
+  ]);
 
   useEffect(() => {
     if (isConnected && chainConfig) fetchUserNFTs();
     else setItems([]);
-  }, [isConnected, chainId]);
+  }, [isConnected, chainConfig, fetchUserNFTs]);
 
   /** --------------------------------------------------------
-   * Open popup details
+   * Popup handlers (stable)
    -------------------------------------------------------- */
-  const openDetails = (nft) => {
+  const openDetails = useCallback((nft) => {
     setNftData(nft);
     setShowDetail(true);
-  };
+  }, []);
 
-  /** --------------------------------------------------------
-   * Open price modal
-   -------------------------------------------------------- */
-  const openPricePopup = (nft) => {
+  const openPricePopup = useCallback((nft) => {
     setNftData(nft);
     setShowPricePopup(true);
-  };
+  }, []);
 
   /** --------------------------------------------------------
    * UI Rendering
    -------------------------------------------------------- */
-
   if (!isConnected) {
     return (
       <div className="dashboard-empty">
@@ -119,7 +133,9 @@ export default function Sell() {
         <div className="p-5 listing-price-box">
           <h1 className="text-lg font-black text-center">
             Put your artistic NFTs on sale for a fee of{" "}
-            <span className="text-[gold]">{listingPrice} {currency}</span>
+            <span className="text-[gold]">
+              {listingPrice} {currency}
+            </span>
           </h1>
         </div>
       </div>
@@ -128,16 +144,15 @@ export default function Sell() {
       {items.length > 0 ? (
         <div className="page-wrapper">
           <div className="nft-section">
-            <h2 className="dashboard-heading px-12 mt-6">List Your NFTs</h2>
             <div className="nft-grid">
               {items.map((n) => (
                 <NFTCard
                   key={n.nftId}
                   nft={n}
                   showMore={true}
-                  onMore={(n) => openDetails(n)}
+                  onMore={openDetails}
                   ctaText="Sell"
-                  onCta={(n) => openPricePopup(n)}
+                  onCta={openPricePopup}
                 />
               ))}
             </div>

@@ -1,98 +1,83 @@
-// src/components/Mint/MintForm.jsx
+import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { mintSchema } from "../../utils/mintFormValidation";
 
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCloudArrowUp } from "@fortawesome/free-solid-svg-icons";
-import { ALLOWED_IMAGE_FORMATS } from "../../utils/commonUtils";
+import MintImageUpload from "./MintImageUpload";
+import MintAttributes from "./MintAttributes";
 
-export default function MintForm({
-    nftInfo,
-    setNftInfo,
-    nftImage,
-    setNftImage,
-    imageName,
-    setImageName,
-}) {
-    const ATTRIBUTE_FIELDS = [
-        { key: "quantity", label: "Quantity", max: 100 },
-        { key: "rarity", label: "Rarity", max: 10 },
-        { key: "style", label: "Style", max: 10 },
-        { key: "beauty", label: "Beauty", max: 10 },
-        { key: "comedy", label: "Comedy", max: 10 },
-        { key: "action", label: "Action", max: 10 },
-    ];
+export default React.memo(function MintForm({ onSubmit }) {
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        formState: { errors },
+    } = useForm({
+        resolver: zodResolver(mintSchema),
+        defaultValues: {
+            name: "",
+            description: "",
+            quantity: 1,
+            rarity: 1,
+            style: 1,
+            beauty: 1,
+            comedy: 1,
+            action: 1,
+            image: null,
+        },
+    });
 
-    const handleInputNumber = (e) => {
-        const { name, value } = e.target;
-
-        if (value === "") {
-            setNftInfo((p) => ({ ...p, [name]: "" }));
-            return;
-        }
-
-        if (/^\d+$/.test(value)) {
-            setNftInfo((p) => ({ ...p, [name]: Number(value) }));
-        }
-    };
-
-    const handleImageChange = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const ext = file.name.split(".").pop().toLowerCase();
-        if (!ALLOWED_IMAGE_FORMATS.includes(ext)) return;
-
-        setNftImage(file);
-        setImageName(file.name);
-    };
+    const image = watch("image");
 
     return (
-        <>
+        <form onSubmit={handleSubmit(onSubmit)}>
+
+            {/* === FIRST ROW (IMAGE + NAME) === */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 form-background">
-                <label className="uploadFile cursor-pointer">
-                    <span className="filename">{imageName || "Choose Image"}</span>
-                    <input type="file" accept="image/*" className="inputfile" onChange={handleImageChange} />
-                    <span className="icon"><FontAwesomeIcon icon={faCloudArrowUp} /></span>
-                </label>
 
-                <input
-                    type="text"
-                    className="item-1 mt-5"
-                    name="name"
-                    value={nftInfo.name}
-                    placeholder="NFT Name"
-                    onChange={(e) => setNftInfo((p) => ({ ...p, name: e.target.value }))}
+                {/* IMAGE UPLOAD */}
+                <MintImageUpload
+                    image={image}
+                    onChange={(file) => setValue("image", file)}
+                    error={errors.image?.message}
                 />
+
+                {/* NFT NAME */}
+                <div>
+                    <input
+                        {...register("name")}
+                        placeholder="NFT Name"
+                        className="item-1 mt-5 form-control"
+                    />
+                    {errors.name && (
+                        <p className="text-red-500 text-sm">{errors.name.message}</p>
+                    )}
+                </div>
+
             </div>
 
+            {/* === DESCRIPTION FIELD === */}
             <textarea
-                className="form-control col-12 row-3 input-group text mt-5"
+                {...register("description")}
                 placeholder="NFT Description"
-                name="description"
-                value={nftInfo.description}
-                onChange={(e) => setNftInfo((p) => ({ ...p, description: e.target.value }))}
+                className="form-control col-12 row-3 input-group text mt-5"
             />
+            {errors.description && (
+                <p className="text-red-500 text-sm">{errors.description.message}</p>
+            )}
 
-            <br /><br />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                {ATTRIBUTE_FIELDS.map((f) => (
-                    <div className="text-center" key={f.key}>
-                        <label>{f.label}</label>
-                        <br />
-                        <div className="mt-3">
-                            <input
-                                type="number"
-                                className="form-control nft-input-rating"
-                                name={f.key}
-                                value={nftInfo[f.key]}
-                                onChange={handleInputNumber}
-                            />
-                            <span className="text-[19px] mx-2">of</span>
-                            <input className="form-control nft-input-rating" value={f.max} disabled />
-                        </div>
-                    </div>
-                ))}
+            {/* === ATTRIBUTE GRID === */}
+            <div className="mt-8">
+                <MintAttributes register={register} errors={errors} />
             </div>
-        </>
+
+            {/* SUBMIT */}
+            <div className="text-center mt-10">
+                <button type="submit" className="sc-button">
+                    Mint NFT
+                </button>
+            </div>
+        </form>
     );
-}
+});
