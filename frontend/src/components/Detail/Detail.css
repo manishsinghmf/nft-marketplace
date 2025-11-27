@@ -1,45 +1,128 @@
-.overlay {
+/* Detail.css */
+
+/* FULL-SCREEN DARK BACKDROP */
+.overlay-bg {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  /* top:0; right:0; bottom:0; left:0; */
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+}
+
+/* WRAPPER THAT CENTERS THE POPUP */
+.modal-wrapper {
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 1001;
+  /* above overlay-bg */
+  padding: 20px;
+  /* space on small screens */
+  pointer-events: none;
+  /* let overlay-bg receive outside clicks */
 }
 
-.button {
-  border-radius: 19px 19px 19px 19px;
-  font-size: 1rem;
-}
-
-.param {
-  font-size: 1rem;
-}
-
+/* POPUP CARD */
 .popup {
-  background-color: white;
-  color: black;
-  max-width: 500px;
+  pointer-events: auto;
+  /* enable interactions inside popup */
+  background-color: #ffffff;
+  color: #111827;
+  width: 100%;
+  max-width: 640px;
   max-height: 80vh;
-  /* <--- Important */
   padding: 20px;
   box-shadow: 4px 4px 60px rgba(99, 69, 237, 0.15);
   border-radius: 12px;
   overflow: hidden;
-  /* keeps header/footer fixed */
   display: flex;
   flex-direction: column;
 }
 
-/* NEW - Scroll only the content area */
+/* Heading */
+.popup-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 8px 0;
+}
+
+/* CONTENT (SCROLLABLE) */
 .popup-content {
   overflow-y: auto;
-  max-height: 65vh;
-  /* Keep some space for header/footer */
-  padding-right: 6px;
-  /* Prevent hiding text behind scrollbar */
+  max-height: calc(80vh - 150px);
+  /* leave space for header/footer */
+  padding-right: 8px;
+}
+
+/* Make image responsive and centered */
+.image-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.detail-img-preview {
+  max-width: 100%;
+  max-height: 40vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+/* PARAM STYLES */
+.param {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #111827;
+}
+
+/* PRICE highlight if needed */
+.price-text {
+  color: #b8860b;
+  /* gold-ish */
+}
+
+/* Links */
+.link {
+  color: #0066cc;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+/* FOOTER with close button aligned right */
+.popup-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.btn-close {
+  background-color: #10b981;
+  /* green-600 */
+  color: white;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-close:hover {
+  background-color: #059669;
+  /* green-700 */
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .popup {
+    max-width: 100%;
+    padding: 16px;
+  }
+
+  .detail-img-preview {
+    max-height: 30vh;
+  }
 }
