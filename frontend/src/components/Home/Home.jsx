@@ -1,7 +1,7 @@
 import React from "react";
 import image from "../../assets/robo.png";
 import "./Home.css";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+// import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export default function Home() {
   return (
@@ -12,13 +12,13 @@ export default function Home() {
             Discover and collect your favourite digital NFTs
           </h1>
           <br />
-          <div className="rainbow-connect-wallet">
+          {/* <div className="rainbow-connect-wallet">
             <ConnectButton
               showBalance={false}
               accountStatus="address"
               chainStatus="icon"
             />
-          </div>
+          </div> */}
         </div>
 
         <div className="flex justify-center">

@@ -1,6 +1,7 @@
 // src/components/Modal/Modal.jsx
 
 import React from "react";
+import ReactDOM from "react-dom";
 import "./Modal.css";
 import RingLoader from "react-spinners/RingLoader";
 import { useModalStore } from "../../store/modalStore";
@@ -11,18 +12,21 @@ export default function Modal() {
     closeModal,
   } = useModalStore();
 
+  // If modal is not open, do not render anything
   if (!open) return null;
 
-  const handleBackgroundClick = () => closeModal();
+  // Get the portal target
+  const modalRoot = document.getElementById("modal-root");
+  // SAFETY CHECK — prevents "Target container is not a DOM element" error
+  if (!modalRoot) {
+    console.warn("Modal root not found: #modal-root missing in index.html");
+    return null;
+  }
 
-  const handleButtonClick = () => {
-    if (typeof onAction === "function") onAction();
-    closeModal();
-  };
-
-  return (
+  const content = (
     <>
-      <div className="darkBG" onClick={handleBackgroundClick} />
+      {/* Background overlay */}
+      <div className="darkBG" onClick={() => closeModal()} />
 
       <div className="centered">
         <div className="modal">
@@ -31,12 +35,13 @@ export default function Modal() {
             <h3 className="heading">{heading}</h3>
           </div>
 
-          <button className="closeBtn" onClick={handleBackgroundClick}>
+          <button className="closeBtn" onClick={() => closeModal()}>
             X
           </button>
 
           <hr />
 
+          {/* LOADING SPINNER */}
           {!loading && (
             <div className="py-8 inline-block w-full text-center">
               <RingLoader
@@ -47,6 +52,7 @@ export default function Modal() {
             </div>
           )}
 
+          {/* TEXT CONTENT */}
           <div
             className={
               !loading
@@ -55,23 +61,33 @@ export default function Modal() {
             }
           >
             <p
-              className="break-words" style={{ wordBreak: "break-word" }}
+              className="break-words"
+              style={{ wordBreak: "break-word" }}
               dangerouslySetInnerHTML={{ __html: description }}
             />
           </div>
 
+          {/* ACTION BUTTONS */}
           <div className="modalActions">
             <div className="actionsContainer">
               {loading && (
-                <button className="deleteBtn" onClick={handleButtonClick}>
+                <button
+                  className="deleteBtn"
+                  onClick={() => {
+                    if (typeof onAction === "function") onAction();
+                    closeModal();
+                  }}
+                >
                   <b>{actionText || "OK"}</b>
                 </button>
               )}
             </div>
           </div>
-
         </div>
       </div>
     </>
   );
+
+  // ✔ Render modal into portal root
+  return ReactDOM.createPortal(content, modalRoot);
 }

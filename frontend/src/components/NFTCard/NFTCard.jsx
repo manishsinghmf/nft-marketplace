@@ -1,18 +1,35 @@
+import React, { useCallback } from "react";
 import "./NFTCard.css";
 
-export default function NFTCard({
+function NFTCard({
     nft,
     currency,
     showMore = false,
     showPrice = false,
-    onMore = null,
-    ctaText = null,
-    onCta = null,
+    onMore,
+    ctaText,
+    onCta,
 }) {
+
+    // Stable handlers (prevents re-renders)
+    const handleMore = useCallback(
+        (e) => {
+            e.stopPropagation();
+            onMore?.(nft);
+        },
+        [onMore, nft]
+    );
+
+    const handleCta = useCallback(
+        (e) => {
+            e.stopPropagation();
+            onCta?.(nft);
+        },
+        [onCta, nft]
+    );
+
     return (
-        <div
-            className="nft-card" key={nft.nftId}
-        >
+        <div className="nft-card">
             {/* IMAGE */}
             <div className="nft-image-wrapper">
                 <img src={nft.image} alt={nft.name} className="nft-image" />
@@ -33,13 +50,7 @@ export default function NFTCard({
                 {/* MORE DETAILS */}
                 {showMore && (
                     <span className="icon">
-                        <button
-                            className="more-link"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onMore?.(nft);
-                            }}
-                        >
+                        <button className="more-link" onClick={handleMore}>
                             more details
                         </button>
                     </span>
@@ -49,13 +60,7 @@ export default function NFTCard({
             {/* CTA BUTTON */}
             {ctaText && (
                 <div className="px-6 pb-4">
-                    <button
-                        className="dashboard-sc-button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onCta?.(nft);
-                        }}
-                    >
+                    <button className="dashboard-sc-button" onClick={handleCta}>
                         {ctaText}
                     </button>
                 </div>
@@ -63,3 +68,6 @@ export default function NFTCard({
         </div>
     );
 }
+
+// 🧊 Freeze component unless props change
+export default React.memo(NFTCard);

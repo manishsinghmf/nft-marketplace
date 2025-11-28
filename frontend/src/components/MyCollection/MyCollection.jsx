@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import "./MyCollection.css";
 import "../NFTCard/NFTCommon.css";
 
@@ -13,16 +13,21 @@ import NFTCard from "../NFTCard/NFTCard";
 import { formatError } from "../../utils/formatError";
 
 export default function MyCollection() {
+
   const { address, isConnected, chainId } = useAccount();
   const publicClient = usePublicClient();
 
-  const { openModal, closeModal, setModal } = useModalStore();
+  // Zustand optimized selectors
+  const openModal = useModalStore((s) => s.openModal);
+  const setModal = useModalStore((s) => s.setModal);
+  const closeModal = useModalStore((s) => s.closeModal);
 
   const [ownedNFTs, setOwnedNFTs] = useState([]);
   const [listedNFTs, setListedNFTs] = useState([]);
   const [selectedNFT, setSelectedNFT] = useState(null);
 
-  const chainConfig = CONTRACTS[chainId];
+  // Memoized chain config
+  const chainConfig = useMemo(() => CONTRACTS[chainId], [chainId]);
   const currency = chainConfig?.name || "ETH";
 
   useEffect(() => {

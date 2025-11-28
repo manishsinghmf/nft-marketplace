@@ -25,13 +25,13 @@ export default function Header() {
 
   const { chainConfig } = useAppStore();
   const { setNetworkModalOpen } = useModalStore();
-  const { address, isConnected, chainId } = useWallet();
+  const { address, isConnected, chainId, activeChain } = useWallet();
 
+  // const networkSelected = activeChain.name;
   /** Update chain config automatically */
   useEffect(() => {
     if (!chainId) return;
     const chain = supportedChains.find((c) => c.id === chainId);
-
     if (chain) {
       useAppStore.setState({
         chainConfig: {
