@@ -81,7 +81,7 @@ export default function Sell() {
       setModal({
         heading: "Error",
         description: "Failed to load NFTs.",
-        loading: true,
+        loading: false,
       });
     } finally {
       closeModal("loader");

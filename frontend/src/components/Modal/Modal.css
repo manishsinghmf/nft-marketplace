@@ -128,3 +128,16 @@
   transform: none;
   background: whitesmoke;
 }
+
+.modalContent a {
+  color: #3b82f6;
+  /* Tailwind blue-500 */
+  text-decoration: underline;
+  font-weight: 400;
+  transition: color 0.2s ease;
+}
+
+.modalContent a:hover {
+  color: #1d4ed8;
+  /* blue-700 */
+}

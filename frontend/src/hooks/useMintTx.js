@@ -1,13 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { useAccount, usePublicClient, useWalletClient, useBalance } from "wagmi";
-
+import { useModalStore } from "../store/modalStore";
 import { IpfsService } from "../services/ipfsService";
 import { ContractService } from "../services/contractService";
 import { estimateTotalGasCost } from "../services/gasService";
 import { BalanceService } from "../services/balanceService";
-
 import { CONTRACT_FUNCTIONS } from "../config/contractFunctions";
-import { useModalStore } from "../store/modalStore";
 
 export default function useMintTx({
     chainConfig,
@@ -18,51 +15,10 @@ export default function useMintTx({
     balanceData,
 }) {
     const navigate = useNavigate();
-    const { openModal, setModal } = useModalStore();
+    const openModal = useModalStore((s) => s.openModal);
+    const setModal = useModalStore((s) => s.setModal);
 
-    /**
-     * ----------------------------------------------------
-     * VALIDATION BEFORE CALLING ANYTHING EXPENSIVE
-     * ----------------------------------------------------
-     */
-    const validateRequest = (form) => {
-        if (!form) return false;
-
-        // 1. image
-        if (!form.image) {
-            openModal("Missing Image", "Please upload an image.", true);
-            return false;
-        }
-
-        // 2. name / description (Zod already validates but double-check)
-        if (!form.name.trim() || !form.description.trim()) {
-            openModal("Missing Fields", "Name & description required.", true);
-            return false;
-        }
-
-        // 3. chain config
-        if (!chainConfig) {
-            openModal("Unsupported Network", "Switch to a supported chain.", true);
-            return false;
-        }
-
-        // 4. wallet connection
-        if (!walletClient) {
-            openModal("Wallet Error", "Wallet not connected or not authorized.", true);
-            return false;
-        }
-
-        return true;
-    };
-
-    /**
-     * ----------------------------------------------------
-     * MINT FUNCTION (USED BY MintForm)
-     * ----------------------------------------------------
-     */
     const mint = async (formData) => {
-        if (!validateRequest(formData)) return;
-
         try {
             const {
                 name,
@@ -76,23 +32,47 @@ export default function useMintTx({
                 image,
             } = formData;
 
-            // --------------------------------------------
-            // STEP 1 — OPEN modal ONCE
-            // --------------------------------------------
-            openModal("Uploading Image", "Uploading NFT image to IPFS...", false);
+            if (!chainConfig) {
+                openModal("Unsupported Network", "Switch to a supported chain.", false);
+                return;
+            }
 
-            // --------------------------------------------
-            // STEP 2 — UPLOAD IMAGE
-            // --------------------------------------------
-            const imageHash = await IpfsService.uploadFile(image);
-            if (!imageHash) {
-                return setModal("Failed", "Failed to upload image.", true);
+            if (!walletClient) {
+                openModal("Wallet Error", "Wallet not connected or not authorized.", false);
+                return;
             }
 
             // --------------------------------------------
-            // STEP 3 — UPLOAD METADATA
+            // STEP 1 — show first modal
             // --------------------------------------------
-            setModal("Uploading Metadata", "Uploading metadata...");
+            openModal(
+                "Uploading Image",
+                "Uploading NFT image to IPFS...",
+                true
+            );
+
+            // --------------------------------------------
+            // STEP 2 — upload image to IPFS
+            // --------------------------------------------
+            const imageHash = await IpfsService.uploadFile(image);
+            if (!imageHash) {
+                setModal({
+                    heading: "Failed",
+                    description: "Failed to upload image.",
+                    loading: false,
+                });
+                return;
+            }
+
+            // --------------------------------------------
+            // STEP 3 — upload metadata JSON
+            // --------------------------------------------
+            setModal({
+                heading: "Uploading Metadata",
+                description: "Uploading metadata...",
+                loading: true,
+            });
+
             const metadata = {
                 name,
                 description,
@@ -106,13 +86,22 @@ export default function useMintTx({
 
             const metadataHash = await IpfsService.uploadNFTMetadata(metadata, imageHash);
             if (!metadataHash) {
-                return setModal("Failed", "Metadata upload failed.", true);
+                setModal({
+                    heading: "Failed",
+                    description: "Metadata upload failed.",
+                    loading: false,
+                });
+                return;
             }
 
             // --------------------------------------------
-            // STEP 4 — GAS ESTIMATION
+            // STEP 4 — gas estimation
             // --------------------------------------------
-            setModal("Estimating Gas", "Please wait...");
+            setModal({
+                heading: "Estimating Gas",
+                description: "Please wait...",
+                loading: true,
+            });
 
             const amount = Number(quantity);
 
@@ -125,25 +114,32 @@ export default function useMintTx({
                 account: address,
             });
 
-            const userBalance = balanceData?.value || 0n;
+            const userBalanceWei = balanceData?.value || 0n;
 
             if (
                 !BalanceService.hasEnoughBalance({
-                    userBalanceWei: userBalance,
+                    userBalanceWei,
                     requiredWei: gasInfo.requiredWei,
                 })
             ) {
-                return setModal(
-                    "Insufficient Balance",
-                    `You need approx ${gasInfo.requiredEth.toFixed(5)} ${chainConfig.name} to mint.`,
-                    true
-                );
+                setModal({
+                    heading: "Insufficient Balance",
+                    description: `You need approx ${gasInfo.requiredEth.toFixed(
+                        5
+                    )} ${chainConfig.name} to mint.`,
+                    loading: false,
+                });
+                return;
             }
 
             // --------------------------------------------
             // STEP 5 — SEND TRANSACTION
             // --------------------------------------------
-            setModal("Minting NFT", "Confirm transaction in your wallet...", false);
+            setModal({
+                heading: "Minting NFT",
+                description: "Confirm transaction in your wallet...",
+                loading: true,
+            });
 
             const { tx } = await ContractService.mintNFT({
                 chainId,
@@ -154,11 +150,11 @@ export default function useMintTx({
 
             const explorer = `${chainConfig.explorerUrl}${tx}`;
 
-            setModal(
-                "Transaction Sent",
-                `View on explorer: <a href="${explorer}" target="_blank">${tx}</a>`,
-                false
-            );
+            setModal({
+                heading: "Transaction Sent",
+                description: `View on explorer: <a href="${explorer}" target="_blank">${tx}</a>`,
+                loading: true,
+            });
 
             // --------------------------------------------
             // STEP 6 — WAIT FOR RECEIPT
@@ -166,17 +162,27 @@ export default function useMintTx({
             const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
 
             if (receipt.status === "success") {
-                setModal(
-                    "Mint Successful!",
-                    `Your NFT is minted.<br/><a href="${explorer}" target="_blank">${tx}</a>`,
-                    true
-                );
+                setModal({
+                    heading: "Mint Successful!",
+                    description: `Your NFT is minted.<br/><a href="${explorer}" target="_blank">${tx}</a>`,
+                    loading: false,
+                });
+
                 navigate("/my-collection");
             } else {
-                setModal("Failed", "The transaction reverted.", true);
+                setModal({
+                    heading: "Failed",
+                    description: "The transaction reverted.",
+                    loading: false,
+                });
             }
         } catch (err) {
-            setModal("Error", err?.message || "Unexpected error. Try again.", true);
+            setModal({
+                heading: "Error",
+                description: err?.message || "Unexpected error. Try again.",
+                description: err?.message ? formatError(err) : "Unexpected error. Try again.",
+                loading: true,
+            });
         }
     };
 
