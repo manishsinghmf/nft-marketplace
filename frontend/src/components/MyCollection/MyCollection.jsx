@@ -42,7 +42,7 @@ export default function MyCollection() {
       openModal(
         "Loading...",
         "Fetching NFTs...",
-        false,        // spinner mode
+        true,        // spinner mode
         "loader"
       );
 
@@ -73,7 +73,7 @@ export default function MyCollection() {
         setModal({
           heading: "Error",
           description: err?.message ? formatError(err) : "Failed to fetch your NFTs",
-          loading: true
+          loading: false
         });
       }
     };

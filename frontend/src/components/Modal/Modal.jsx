@@ -42,7 +42,7 @@ export default function Modal() {
           <hr />
 
           {/* LOADING SPINNER */}
-          {!loading && (
+          {loading && (
             <div className="py-8 inline-block w-full text-center">
               <RingLoader
                 color={"rgba(54, 215, 183, 1)"}
@@ -55,7 +55,7 @@ export default function Modal() {
           {/* TEXT CONTENT */}
           <div
             className={
-              !loading
+              loading
                 ? "w-full modalContent top-2/3"
                 : "w-full modalContent inset-y-1/2 bottom-4"
             }
@@ -70,7 +70,7 @@ export default function Modal() {
           {/* ACTION BUTTONS */}
           <div className="modalActions">
             <div className="actionsContainer">
-              {loading && (
+              {!loading && (
                 <button
                   className="deleteBtn"
                   onClick={() => {

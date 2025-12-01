@@ -14,6 +14,7 @@ export default React.memo(function MintForm({ onSubmit }) {
         watch,
         formState: { errors },
     } = useForm({
+        mode: "onChange",
         resolver: zodResolver(mintSchema),
         defaultValues: {
             name: "",
@@ -39,7 +40,7 @@ export default React.memo(function MintForm({ onSubmit }) {
                 {/* IMAGE UPLOAD */}
                 <MintImageUpload
                     image={image}
-                    onChange={(file) => setValue("image", file)}
+                    onChange={(file) => setValue("image", file, { shouldValidate: true })}
                     error={errors.image?.message}
                 />
 

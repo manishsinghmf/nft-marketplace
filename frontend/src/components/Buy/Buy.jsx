@@ -38,6 +38,14 @@ export default function Buy() {
   const chainConfig = useMemo(() => CONTRACTS[chainId], [chainId]);
   const currency = chainConfig?.name || "ETH";
 
+
+  if (!isConnected)
+    return (
+      <div className="dashboard-empty">
+        Please connect your wallet to buy NFTs.
+      </div>
+    );
+
   /** --------------------------------------------------------
    * Load NFTs — memoized to avoid creating a new function each render
    -------------------------------------------------------- */
@@ -87,7 +95,7 @@ export default function Buy() {
     async (selectedNft) => {
       if (!walletClient || !publicClient) return;
 
-      openModal("Preparing Transaction", "Estimating gas...", false, "buy");
+      openModal("Preparing Transaction", "Estimating gas...", true, "buy");
 
       try {
         const priceWei = BigInt(Math.floor(selectedNft.price * 1e18));
@@ -111,14 +119,14 @@ export default function Buy() {
           return setModal({
             heading: "Insufficient Balance",
             description: `You need at least ${gasInfo.requiredEth.toFixed(5)} ${currency} to buy this NFT.`,
-            loading: true,
+            loading: false,
           });
         }
 
         setModal({
           heading: "Confirm Purchase",
           description: "Please confirm in your wallet...",
-          loading: false,
+          loading: true,
         });
 
         const { tx } = await ContractService.buyMarketItem({
@@ -131,7 +139,7 @@ export default function Buy() {
         setModal({
           heading: "Transaction Sent",
           description: `View on explorer: <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`,
-          loading: false,
+          loading: true,
         });
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
@@ -141,7 +149,7 @@ export default function Buy() {
           setModal({
             heading: "Success",
             description: `NFT purchased! <a href="${chainConfig.explorerUrl}${tx}" target="_blank">${tx}</a>`,
-            loading: true,
+            loading: false,
           });
 
           setTimeout(() => loadItemsForSale(), 500);
@@ -149,7 +157,7 @@ export default function Buy() {
           setModal({
             heading: "Failed",
             description: "The transaction was reverted.",
-            loading: true,
+            loading: false,
           });
         }
       } catch (err) {
@@ -157,7 +165,7 @@ export default function Buy() {
         setModal({
           heading: "Error",
           description: err?.message ? formatError(err) : "Transaction failed.",
-          loading: true,
+          loading: false,
         });
       }
     },

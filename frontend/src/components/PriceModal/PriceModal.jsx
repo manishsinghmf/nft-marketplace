@@ -13,6 +13,7 @@ import { useModalStore } from "../../store/modalStore";
 import { ContractService } from "../../services/contractService";
 import { estimateTotalGasCost } from "../../services/gasService";
 import { BalanceService } from "../../services/balanceService";
+import { formatError } from "../../utils/formatError";
 
 export default function PriceModal({
     setShowPricePopup,
@@ -56,23 +57,23 @@ export default function PriceModal({
         setShowPricePopup(false);
 
         if (!chainConfig)
-            return openModal("Unsupported Network", "Please switch network.", true);
+            return openModal("Unsupported Network", "Please switch network.", false);
 
         const numericPrice = Number(price);
         if (!numericPrice || numericPrice <= 0)
-            return openModal("Invalid Price", "Price must be greater than 0.", true);
+            return openModal("Invalid Price", "Price must be greater than 0.", false);
 
         if (numericPrice < Number(listingFee))
             return openModal(
                 "Invalid Price",
                 `Price cannot be lower than listing fee (${listingFee} ${currency}).`,
-                true
+                false
             );
 
         openModal(
             "Preparing Sell Transaction",
             "Checking approval, estimating gas...",
-            false
+            true
         );
 
         try {
@@ -92,7 +93,7 @@ export default function PriceModal({
                 setModal({
                     heading: "Approval Required",
                     description: "Confirm approval in your wallet...",
-                    loading: false,
+                    loading: true,
                 });
 
                 const tx = await ContractService.approveAll({
@@ -128,7 +129,7 @@ export default function PriceModal({
                     description: `You need approx ${gasInfo.requiredEth.toFixed(
                         5
                     )} ${currency}.`,
-                    loading: true,
+                    loading: false,
                 });
             }
 
@@ -136,7 +137,7 @@ export default function PriceModal({
             setModal({
                 heading: "Listing NFT",
                 description: "Submitting transaction...",
-                loading: false,
+                loading: true,
             });
 
             const { tx } = await ContractService.createMarketItem({
@@ -162,22 +163,22 @@ export default function PriceModal({
                 setModal({
                     heading: "NFT Listed Successfully!",
                     description: `View on explorer: <a href="${explorerUrl}" target="_blank">${tx}</a>`,
-                    loading: true,
+                    loading: false,
                 });
                 await refetchNFTs?.();
             } else {
                 setModal({
                     heading: "Failed",
                     description: "The transaction was reverted.",
-                    loading: true,
+                    loading: false,
                 });
             }
         } catch (err) {
             console.error("Sell Error:", err);
             setModal({
                 heading: "Sell Transaction Failed",
-                description: err.message || "Unexpected error occurred",
-                loading: true,
+                description: err?.message ? formatError(err) : "Transaction failed.",
+                loading: false,
             });
         }
     }, [
