@@ -38,8 +38,13 @@ export default function Mint() {
   ]);
 
   const { mint } = useMintTx(mintParams);
+
   if (!isConnected)
-    return <div className="text-center text-red-400 mt-10">Please connect wallet.</div>;
+    return (
+      <div className="dashboard-empty">
+        Please connect your wallet to mint NFT.
+      </div>
+    );
 
   if (!chainConfig)
     return <div className="text-center text-red-400 mt-10">Unsupported network.</div>;

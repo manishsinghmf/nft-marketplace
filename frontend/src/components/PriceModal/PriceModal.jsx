@@ -13,6 +13,7 @@ import { useModalStore } from "../../store/modalStore";
 import { ContractService } from "../../services/contractService";
 import { estimateTotalGasCost } from "../../services/gasService";
 import { BalanceService } from "../../services/balanceService";
+import { formatError } from "../../utils/formatError";
 
 export default function PriceModal({
     setShowPricePopup,

@@ -5,6 +5,8 @@ import { ContractService } from "../services/contractService";
 import { estimateTotalGasCost } from "../services/gasService";
 import { BalanceService } from "../services/balanceService";
 import { CONTRACT_FUNCTIONS } from "../config/contractFunctions";
+import { formatError } from "../utils/formatError";
+import { UPLOADING_METADATA_DESC, UPLOADING_METADATA, UPLOADING_IMAGE, UPLOADING_IMAGE_DESC, } from "../utils/messageConstants";
 
 export default function useMintTx({
     chainConfig,
@@ -46,8 +48,8 @@ export default function useMintTx({
             // STEP 1 — show first modal
             // --------------------------------------------
             openModal(
-                "Uploading Image",
-                "Uploading NFT image to IPFS...",
+                UPLOADING_IMAGE,
+                UPLOADING_IMAGE_DESC,
                 true
             );
 
@@ -68,8 +70,8 @@ export default function useMintTx({
             // STEP 3 — upload metadata JSON
             // --------------------------------------------
             setModal({
-                heading: "Uploading Metadata",
-                description: "Uploading metadata...",
+                heading: UPLOADING_METADATA,
+                description: UPLOADING_METADATA_DESC,
                 loading: true,
             });
 

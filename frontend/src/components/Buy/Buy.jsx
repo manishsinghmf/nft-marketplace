@@ -38,6 +38,14 @@ export default function Buy() {
   const chainConfig = useMemo(() => CONTRACTS[chainId], [chainId]);
   const currency = chainConfig?.name || "ETH";
 
+
+  if (!isConnected)
+    return (
+      <div className="dashboard-empty">
+        Please connect your wallet to buy NFTs.
+      </div>
+    );
+
   /** --------------------------------------------------------
    * Load NFTs — memoized to avoid creating a new function each render
    -------------------------------------------------------- */
@@ -118,7 +126,7 @@ export default function Buy() {
         setModal({
           heading: "Confirm Purchase",
           description: "Please confirm in your wallet...",
-          loading: false,
+          loading: true,
         });
 
         const { tx } = await ContractService.buyMarketItem({
