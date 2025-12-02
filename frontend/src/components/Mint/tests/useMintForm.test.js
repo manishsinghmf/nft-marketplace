@@ -1,4 +1,5 @@
-import { renderHook, act } from "@testing-library/react-hooks/dom";
+import { renderHook, act } from "@testing-library/react";
+
 import useMintForm from "../useMintForm";
 
 describe("useMintForm hook", () => {

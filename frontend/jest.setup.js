@@ -19,3 +19,9 @@ global.TextDecoder = TextDecoder;
 
 // Required for viem hashing functions
 if (!global.crypto) global.crypto = webcrypto;
+
+jest.mock("zustand/react", () => ({
+    useStore: () => { }
+}));
+
+jest.mock("zustand", () => require("zustand/vanilla"));

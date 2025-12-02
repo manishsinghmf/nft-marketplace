@@ -3,7 +3,6 @@ import { readFromContract, writeToContract } from "../hooks/useContract";
 import { IpfsService } from "./ipfsService";
 import { IPFS_CONFIG } from "../config/ipfsConfig";
 import CONTRACT_FUNCTIONS from "../config/contractFunctions";
-import { IPFS_CONFIG } from "../config/ipfsConfig";
 
 /**
  * Central ContractService

@@ -1,7 +1,7 @@
-// src/store/modalStore.js
 import { createStore } from "zustand/vanilla";
+import { useStore } from "zustand";
 
-// Create vanilla Zustand store
+// Create vanilla store
 export const modalStoreInstance = createStore((set) => ({
     modal: {
         open: false,
@@ -14,7 +14,6 @@ export const modalStoreInstance = createStore((set) => ({
     },
 
     openModal: (headingOrObj, description = "", loading = true, context = "general") => {
-        // String format
         if (typeof headingOrObj === "string") {
             return set(() => ({
                 modal: {
@@ -29,7 +28,6 @@ export const modalStoreInstance = createStore((set) => ({
             }));
         }
 
-        // Object format
         const payload = headingOrObj || {};
         return set(() => ({
             modal: {
@@ -58,9 +56,10 @@ export const modalStoreInstance = createStore((set) => ({
             if (!context || context === state.modal.context) {
                 return { modal: { ...state.modal, open: false } };
             }
-            return {}; // ignore if wrong context
+            return {};
         }),
 }));
 
-// Export convenience getter for React components if needed
-export const useModalStore = modalStoreInstance;
+// 🔥 FIX: React hook version of the vanilla store
+export const useModalStore = (selector) =>
+    useStore(modalStoreInstance, selector || ((state) => state));
