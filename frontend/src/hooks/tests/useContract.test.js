@@ -8,7 +8,7 @@ import {
     useWriteToContract,
 } from "../useContract";
 
-jest.mock("../../config/contracts", () => ({
+vi.mock("../../config/contracts", () => ({
     CONTRACTS: {
         1: {
             name: "TestNet",
@@ -23,12 +23,12 @@ jest.mock("../../config/contracts", () => ({
 }));
 
 // Mock wagmi exports used by the hook file
-const mockUsePublicClient = jest.fn();
-const mockUseWalletClient = jest.fn();
-const mockWagmiRead = jest.fn();
-const mockWagmiWrite = jest.fn();
+const mockUsePublicClient = vi.fn();
+const mockUseWalletClient = vi.fn();
+const mockWagmiRead = vi.fn();
+const mockWagmiWrite = vi.fn();
 
-jest.mock("wagmi", () => ({
+vi.mock("wagmi", () => ({
     usePublicClient: () => mockUsePublicClient(),
     useWalletClient: () => mockUseWalletClient(),
     useReadContract: (...args) => mockWagmiRead(...args),
@@ -37,8 +37,8 @@ jest.mock("wagmi", () => ({
 
 describe("useContract hooks and helpers", () => {
     beforeEach(() => {
-        jest.clearAllMocks();
-        jest.spyOn(console, "error").mockImplementation(() => { });
+        vi.clearAllMocks();
+        vi.spyOn(console, "error").mockImplementation(() => { });
     });
 
     describe("getContract()", () => {
@@ -85,7 +85,7 @@ describe("useContract hooks and helpers", () => {
 
     describe("readFromContract()", () => {
         it("reads contract and returns { data, error: null } on success", async () => {
-            const fakeClient = { readContract: jest.fn().mockResolvedValue("READ_RESULT") };
+            const fakeClient = { readContract: vi.fn().mockResolvedValue("READ_RESULT") };
 
             const res = await readFromContract({
                 chainId: 1,
@@ -112,7 +112,7 @@ describe("useContract hooks and helpers", () => {
                 chainId: 999,
                 contractName: "nft",
                 functionName: "f",
-                client: { readContract: jest.fn() },
+                client: { readContract: vi.fn() },
             });
 
             expect(res.data).toBeNull();
@@ -135,7 +135,7 @@ describe("useContract hooks and helpers", () => {
         });
 
         it("returns error when client.readContract throws", async () => {
-            const badClient = { readContract: jest.fn().mockRejectedValue(new Error("rpc fail")) };
+            const badClient = { readContract: vi.fn().mockRejectedValue(new Error("rpc fail")) };
 
             const res = await readFromContract({
                 chainId: 1,
@@ -152,7 +152,7 @@ describe("useContract hooks and helpers", () => {
 
     describe("writeToContract()", () => {
         it("writes contract and returns hash on success", async () => {
-            const fakeWalletClient = { writeContract: jest.fn().mockResolvedValue("0xHASH") };
+            const fakeWalletClient = { writeContract: vi.fn().mockResolvedValue("0xHASH") };
 
             const res = await writeToContract({
                 chainId: 1,
@@ -189,7 +189,7 @@ describe("useContract hooks and helpers", () => {
         });
 
         it("returns error when walletClient.writeContract throws", async () => {
-            const badWalletClient = { writeContract: jest.fn().mockRejectedValue(new Error("tx fail")) };
+            const badWalletClient = { writeContract: vi.fn().mockRejectedValue(new Error("tx fail")) };
 
             const res = await writeToContract({
                 chainId: 1,
@@ -228,7 +228,7 @@ describe("useContract hooks and helpers", () => {
         });
 
         it("useWriteToContract returns wagmi write when configured", () => {
-            const wagmiWriteReturn = { writeAsync: jest.fn(), isLoading: false };
+            const wagmiWriteReturn = { writeAsync: vi.fn(), isLoading: false };
             mockWagmiWrite.mockReturnValueOnce(wagmiWriteReturn);
 
             const res = useWriteToContract({ chainId: 1, contractName: "marketplace", functionName: "create" });

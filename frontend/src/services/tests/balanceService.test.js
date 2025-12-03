@@ -2,8 +2,8 @@ import { BalanceService } from '../balanceService';
 
 describe('BalanceService', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
-        jest.spyOn(console, "error").mockImplementation(() => { });
+        vi.clearAllMocks();
+        vi.spyOn(console, "error").mockImplementation(() => { });
     });
 
     test('should return true if user has enough balance', () => {
@@ -47,7 +47,7 @@ describe('BalanceService', () => {
     });
 
     test('should log an error for invalid user balance', () => {
-        const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
         BalanceService.hasEnoughBalance({
             userBalanceWei: 'invalid',
             requiredWei: '500000000000000000',

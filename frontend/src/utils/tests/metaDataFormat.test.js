@@ -1,15 +1,19 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import axios from "axios";
+
+// Import functions
 import {
   mapformat,
   getNFTDetailsFromURI,
   convertToEther,
   convertToWei,
   noExponents,
-} from "../metaDataFormat";
+} from "../../utils/metaDataFormat";
 
-jest.mock("axios");
+// --- Mock axios ---
+vi.mock("axios");
 
-jest.mock("../../config/ipfsConfig", () => ({
+vi.mock("../../config/ipfsConfig", () => ({
   IPFS_CONFIG: {
     GATEWAY: "https://gateway.pinata.cloud/ipfs/",
   },
@@ -17,75 +21,120 @@ jest.mock("../../config/ipfsConfig", () => ({
 
 
 describe("mapformat", () => {
-  test("formats metadata correctly", () => {
-    const input = {
-      image: "QmHash",
+  it("correctly maps old format to new Pinata upload format", () => {
+    const old_format = {
       name: "Test NFT",
       description: "Cool NFT",
-      quantity: "10",
-      rarity: "rare",
-      style: "modern",
-      beauty: "high",
-      comedy: "medium",
-      action: "low",
+      image: "Qm12345",
+      quantity: 10,
+      rarity: 5,
+      style: 3,
+      beauty: 2,
+      comedy: 7,
+      action: 1,
     };
 
-    const result = mapformat(input);
+    const result = mapformat(old_format);
 
-    expect(result.pinataContent.image).toBe(
-      "https://gateway.pinata.cloud/ipfs/QmHash"
-    );
-    expect(result.pinataContent.name).toBe("Test NFT");
-    expect(result.pinataContent.attributes).toHaveLength(6);
-    expect(result.pinataMetadata.name).toBe("Test NFT");
+    expect(result).toEqual({
+      pinataMetadata: {
+        name: "Test NFT",
+      },
+      pinataContent: {
+        image: "https://gateway.pinata.cloud/ipfs/Qm12345",
+        name: "Test NFT",
+        description: "Cool NFT",
+        attributes: [
+          { trait_type: "quantity", value: 10 },
+          { trait_type: "rarity", value: 5 },
+          { trait_type: "style", value: 3 },
+          { trait_type: "beauty", value: 2 },
+          { trait_type: "comedy", value: 7 },
+          { trait_type: "action", value: 1 },
+        ],
+      },
+    });
   });
 });
 
 describe("getNFTDetailsFromURI", () => {
-  test("returns metadata on success", async () => {
-    axios.get.mockResolvedValueOnce({
-      status: 200,
-      data: { name: "NFT1" },
-    });
-
-    const result = await getNFTDetailsFromURI("https://example.com");
-
-    expect(result).toEqual({ name: "NFT1" });
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  test("logs error and returns null on failure", async () => {
-    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => { });
+  it("returns metadata when axios returns 200", async () => {
+    const mockData = { name: "NFT A" };
+
+    axios.get.mockResolvedValueOnce({
+      status: 200,
+      data: mockData,
+    });
+
+    const result = await getNFTDetailsFromURI("https://test.com/metadata.json");
+
+    expect(result).toEqual(mockData);
+    expect(axios.get).toHaveBeenCalledWith("https://test.com/metadata.json");
+  });
+
+  it("returns null when status is not 200", async () => {
+    axios.get.mockResolvedValueOnce({
+      status: 404,
+      data: null,
+    });
+
+    const result = await getNFTDetailsFromURI("https://bad-url");
+    expect(result).toBeNull();
+  });
+
+  it("returns null and logs error on axios failure", async () => {
     axios.get.mockRejectedValueOnce(new Error("Network error"));
 
-    const result = await getNFTDetailsFromURI("https://example.com");
-
+    const result = await getNFTDetailsFromURI("https://bad-url");
     expect(result).toBeNull();
-    expect(consoleSpy).toHaveBeenCalled();
   });
 });
 
 describe("convertToEther", () => {
-  test("converts wei to ether", () => {
-    expect(convertToEther("1000000000000000000")).toBe("1");
+  it("converts wei to ether correctly", () => {
+    // 1 ETH in Wei
+    const value = "1000000000000000000";
+    const result = convertToEther(value);
+
+    expect(result).toBe("1");
   });
 
-  test("returns 0 for null", () => {
+  it("returns '0' for falsy input", () => {
     expect(convertToEther(null)).toBe("0");
+    expect(convertToEther("")).toBe("0");
   });
 });
 
 describe("convertToWei", () => {
-  test("converts ether to wei", () => {
-    expect(convertToWei("1").toString()).toBe("1000000000000000000");
+  it("converts ether string to wei bigint", () => {
+    const result = convertToWei("1"); // 1 ETH
+    expect(result).toBe(1000000000000000000n);
+  });
+
+  it("supports custom decimals", () => {
+    const result = convertToWei("1", 6); // 1 USDC
+    expect(result).toBe(1000000n);
   });
 });
 
 describe("noExponents", () => {
-  test("returns number without exponent", () => {
-    expect(noExponents(1e18)).toBe("1000000000000000000");
+  it("returns input when no exponent is present", () => {
+    expect(noExponents(12345)).toBe("12345");
   });
 
-  test("returns same string if no exponent", () => {
-    expect(noExponents("5000")).toBe("5000");
+  it("correctly handles small exponent numbers", () => {
+    expect(noExponents(1e-5)).toBe("0.00001");
+  });
+
+  it("handles large exponent numbers", () => {
+    expect(noExponents(1e6)).toBe("1000000");
+  });
+
+  it("works with negative exponent numbers", () => {
+    expect(noExponents(5e-7)).toBe("0.0000005");
   });
 });

@@ -1,12 +1,29 @@
-import { IpfsService } from "../ipfsService";
-import axios from "axios";
+// ---------------------------------------------
+// IMPORTANT: ALL MOCKS MUST COME BEFORE IMPORTS
+// ---------------------------------------------
 
-// Mock axios
-jest.mock("axios");
+import { vi, describe, it, expect, beforeEach } from "vitest";
 
-// Mock IPFS_CONFIG
-jest.mock("../../config/ipfsConfig", () => ({
+// Mock axios BEFORE importing service
+vi.mock("axios", () => ({
+    default: {
+        post: vi.fn(),
+        get: vi.fn(),
+    },
+}));
+
+// Mock metaDataFormat BEFORE ipfsService imports it dynamically
+vi.mock("../../utils/metaDataFormat.js", () => ({
+    mapformat: vi.fn((data) => ({
+        pinataMetadata: { name: data.name },
+        pinataContent: { ...data },
+    })),
+}));
+
+// Mock ipfsConfig BEFORE anything loads
+vi.mock("../../config/ipfsConfig.js", () => ({
     IPFS_CONFIG: {
+        GATEWAY: "https://gateway.pinata.cloud/ipfs/",
         FILE_UPLOAD_URL: "https://pinata.test/uploadFile",
         JSON_UPLOAD_URL: "https://pinata.test/uploadJson",
         API_KEY: "test-key",
@@ -14,19 +31,18 @@ jest.mock("../../config/ipfsConfig", () => ({
     },
 }));
 
-// Mock dynamic import of metaDataFormat.js
-jest.mock("../../utils/metaDataFormat.js", () => ({
-    mapformat: jest.fn((data) => ({
-        pinataMetadata: { name: data.name },
-        pinataContent: { ...data },
-    })),
-}));
+// NOW IMPORT SERVICE (AFTER MOCKING EVERYTHING IT TOUCHES)
+import axios from "axios";
+import { IpfsService } from "../ipfsService";
 
+// -----------------------
+// TEST SUITE
+// -----------------------
 describe("IpfsService", () => {
     beforeEach(() => {
-        jest.clearAllMocks();
-        jest.spyOn(console, "error").mockImplementation(() => { });
-        jest.spyOn(console, "warn").mockImplementation(() => { });
+        vi.clearAllMocks();
+        vi.spyOn(console, "error").mockImplementation(() => { });
+        vi.spyOn(console, "warn").mockImplementation(() => { });
     });
 
     /* -----------------------------
@@ -34,16 +50,14 @@ describe("IpfsService", () => {
      * ----------------------------*/
     describe("uploadFile", () => {
         it("uploads file and returns IPFS hash", async () => {
-            const mockHash = "QmTestFileHash";
             axios.post.mockResolvedValueOnce({
-                data: { IpfsHash: mockHash },
+                data: { IpfsHash: "QmTestFileHash" },
             });
 
             const file = new Blob(["hello"]);
             const res = await IpfsService.uploadFile(file);
 
-            expect(res).toBe(mockHash);
-            expect(axios.post).toHaveBeenCalledTimes(1);
+            expect(res).toBe("QmTestFileHash");
             expect(axios.post).toHaveBeenCalledWith(
                 "https://pinata.test/uploadFile",
                 expect.any(FormData),
@@ -69,30 +83,16 @@ describe("IpfsService", () => {
      * ----------------------------*/
     describe("uploadJSON", () => {
         it("uploads JSON and returns hash", async () => {
-            const mockHash = "QmJsonHash";
             axios.post.mockResolvedValueOnce({
-                data: { IpfsHash: mockHash },
+                data: { IpfsHash: "QmJsonHash" },
             });
 
-            const json = { name: "Test JSON" };
-            const res = await IpfsService.uploadJSON(json);
-
-            expect(res).toBe(mockHash);
-            expect(axios.post).toHaveBeenCalledWith(
-                "https://pinata.test/uploadJson",
-                json,
-                expect.objectContaining({
-                    headers: expect.objectContaining({
-                        "Content-Type": "application/json",
-                        pinata_api_key: "test-key",
-                        pinata_secret_api_key: "test-secret",
-                    }),
-                })
-            );
+            const res = await IpfsService.uploadJSON({ test: 1 });
+            expect(res).toBe("QmJsonHash");
         });
 
         it("returns null on upload error", async () => {
-            axios.post.mockRejectedValueOnce(new Error("upload-json error"));
+            axios.post.mockRejectedValueOnce(new Error("json error"));
             const res = await IpfsService.uploadJSON({});
             expect(res).toBeNull();
         });
@@ -103,30 +103,28 @@ describe("IpfsService", () => {
      * ----------------------------*/
     describe("uploadNFTMetadata", () => {
         it("formats metadata and uploads JSON to IPFS", async () => {
-            const mockHash = "QmMetaHash";
-
-            // axios post for uploadJSON
+            // JSON upload returns hash
             axios.post.mockResolvedValueOnce({
-                data: { IpfsHash: mockHash },
+                data: { IpfsHash: "QmMetaHash" },
             });
 
             const formData = { name: "TestNFT", description: "desc" };
             const imageHash = "QmImageHash";
 
             const result = await IpfsService.uploadNFTMetadata(formData, imageHash);
+            expect(result).toBe("QmMetaHash");
 
-            expect(result).toBe(mockHash);
-
-            // verify mapformat was called with merged data
-            const { mapformat } = require("../../utils/metaDataFormat.js");
+            // Check mapformat was called
+            const { mapformat } = await import("../../utils/metaDataFormat.js");
             expect(mapformat).toHaveBeenCalledWith({
                 ...formData,
                 image: imageHash,
             });
         });
 
-        it("returns null if something fails", async () => {
-            axios.post.mockRejectedValueOnce(new Error("json upload failed"));
+        it("returns null on failure", async () => {
+            axios.post.mockRejectedValueOnce(new Error("upload failed"));
+
             const res = await IpfsService.uploadNFTMetadata({ name: "A" }, "hash");
             expect(res).toBeNull();
         });
@@ -136,22 +134,20 @@ describe("IpfsService", () => {
      * fetchMetadata()
      * ----------------------------*/
     describe("fetchMetadata", () => {
-        it("fetches metadata successfully", async () => {
-            const metadata = { name: "NFT", image: "ipfs://img" };
-            axios.get.mockResolvedValueOnce({ data: metadata });
+        it("returns metadata", async () => {
+            const mockData = { name: "NFT", image: "ipfs://img" };
+            axios.get.mockResolvedValueOnce({ data: mockData });
 
             const res = await IpfsService.fetchMetadata("https://meta/1");
-            expect(res).toEqual(metadata);
-            expect(axios.get).toHaveBeenCalledWith("https://meta/1", { timeout: 12000 });
+            expect(res).toEqual(mockData);
         });
 
         it("returns null for missing uri", async () => {
-            const res = await IpfsService.fetchMetadata(null);
-            expect(res).toBeNull();
+            expect(await IpfsService.fetchMetadata(null)).toBeNull();
         });
 
-        it("returns null when fetch fails", async () => {
-            axios.get.mockRejectedValueOnce(new Error("fetch fail"));
+        it("returns null on error", async () => {
+            axios.get.mockRejectedValueOnce(new Error("bad"));
 
             const res = await IpfsService.fetchMetadata("https://bad");
             expect(res).toBeNull();

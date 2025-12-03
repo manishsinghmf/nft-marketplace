@@ -1,9 +1,7 @@
-// src/utils/tests/networkUtils.test.js
-
 import { getSupportedNetworkList, getChainDisplayName } from "../networkUtils";
 
 // Mock the supportedChains import
-jest.mock("../../config/chains", () => ({
+vi.mock("../../config/chains", () => ({
     supportedChains: [
         {
             id: 1,

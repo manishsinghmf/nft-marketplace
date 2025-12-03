@@ -1,150 +1,244 @@
-// import React from "react";
-// import { render, screen } from "@testing-library/react";
-// import App from "../App";
+// ------------------------------------------------------
+// SAFE HOISTED MOCK VARIABLES (Vitest requirement)
+// ------------------------------------------------------
+const {
+    useModalStoreMock,
+    mockSetNetworkModalOpen,
+    mockSetNftContract,
+    mockSetMarketplaceContract,
+    mockSetChainConfig,
+    mockUseWallet
+} = vi.hoisted(() => ({
+    useModalStoreMock: vi.fn(),
+    mockSetNetworkModalOpen: vi.fn(),
 
-// // ⬇ Mock Outlet from react-router-dom
-// jest.mock("react-router-dom", () => ({
-//     Outlet: () => <div data-testid="outlet" />,
-// }));
+    mockSetNftContract: vi.fn(),
+    mockSetMarketplaceContract: vi.fn(),
+    mockSetChainConfig: vi.fn(),
 
-// // ⬇ Mock Zustand stores (modal + app store)
-// jest.mock("../../../store/modalStore", () => ({
-//     useModalStore: () => ({
-//         networkModalOpen: false,
-//         setNetworkModalOpen: jest.fn(),
-//     }),
-// }));
-
-// jest.mock("../../../store/useAppStore", () => () => ({
-//     setNftContract: jest.fn(),
-//     setMarketplaceContract: jest.fn(),
-//     setChainConfig: jest.fn(),
-//     chainConfig: null,
-// }));
-
-// // ⬇ Mock useWallet hook
-// jest.mock("../../../hooks/useWallet", () => () => ({
-//     chainId: null,
-//     isConnected: false,
-//     activeChain: null,
-// }));
-
-// describe("App Component", () => {
-//     test("renders without crashing", () => {
-//         render(<App />);
-
-//         // Header exists
-//         expect(screen.getByRole("banner")).toBeInTheDocument();
-
-//         // Footer exists
-//         expect(screen.getByRole("contentinfo")).toBeInTheDocument();
-
-//         // Outlet exists
-//         expect(screen.getByTestId("outlet")).toBeInTheDocument();
-//     });
-
-//     test("does NOT show NetworkModal when networkModalOpen=false", () => {
-//         render(<App />);
-
-//         expect(screen.queryByText(/network/i)).not.toBeInTheDocument();
-//     });
-// });
-
-
-import React from 'react';
-import { render, screen } from '@testing-library/react';
-import { BrowserRouter as Router } from 'react-router-dom';
-import App from '../App';
-
-// --- Mocks ---
-// Mock the child components to keep the test focused on App's logic and structure
-jest.mock('../../Header/Header', () => () => <div data-testid="mock-header" />);
-jest.mock('../../Footer/Footer', () => () => <div data-testid="mock-footer" />);
-jest.mock('../../Modal/Modal', () => () => <div data-testid="mock-global-modal" />);
-jest.mock('../../NetworkModal/NetworkModal', () => () => <div data-testid="mock-network-modal" />);
-
-// Mock the utility function
-jest.mock('../../../utils/networkUtils', () => ({
-    getSupportedNetworkList: jest.fn(() => [{ id: 1, name: 'MockNet' }]),
-}));
-
-// Mock the zustand stores/hooks
-const mockSetNetworkModalOpen = jest.fn();
-jest.mock('../../../store/modalStore', () => ({
-    useModalStore: jest.fn(() => ({
-        networkModalOpen: false, // Default to closed for initial render test
-        setNetworkModalOpen: mockSetNetworkModalOpen,
+    mockUseWallet: vi.fn(() => ({
+        chainId: null,
+        isConnected: false,
+        activeChain: null,
     })),
 }));
 
-const mockSetNftContract = jest.fn();
-const mockSetMarketplaceContract = jest.fn();
-const mockSetChainConfig = jest.fn();
-jest.mock('../../../store/useAppStore', () => jest.fn(() => ({
-    setNftContract: mockSetNftContract,
-    setMarketplaceContract: mockSetMarketplaceContract,
-    setChainConfig: mockSetChainConfig,
-    chainConfig: null,
-})));
+// ------------------------------------------------------
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { BrowserRouter as Router } from "react-router-dom";
+import { vi } from "vitest";
 
-// Mock the wallet hook
-const mockUseWallet = jest.fn(() => ({
-    chainId: null,
-    isConnected: false,
-    activeChain: null,
-}));
-jest.mock('../../../hooks/useWallet', () => mockUseWallet);
+// ------------------------------------------------------
+// Component under test — dynamically imported inside tests
+// ------------------------------------------------------
+let App; // filled later with dynamic import()
 
-// Mock viem's getContract (necessary to prevent crash during effect execution)
-jest.mock('viem', () => ({
-    getContract: jest.fn(() => ({})),
+// ------------------------------------------------------
+// Fixed mocks — these load safely because variables exist
+// ------------------------------------------------------
+vi.mock("../../Header/Header", () => ({
+    default: () => <div data-testid="mock-header" />,
 }));
 
-// --- Test Suite ---
-describe('App Component', () => {
-    // Helper function to render the component wrapped in Router
-    const renderComponent = () => render(
+vi.mock("../../Footer/Footer", () => ({
+    default: () => <div data-testid="mock-footer" />,
+}));
+
+vi.mock("../../Modal/Modal", () => ({
+    default: () => <div data-testid="mock-global-modal" />,
+}));
+
+vi.mock("../../NetworkModal/NetworkModal", () => ({
+    default: () => <div data-testid="mock-network-modal" />,
+}));
+
+vi.mock("../../../utils/networkUtils", () => ({
+    getSupportedNetworkList: vi.fn(() => [{ id: 1, name: "MockNet" }]),
+}));
+
+vi.mock("../../../store/modalStore", () => ({
+    useModalStore: useModalStoreMock,
+}));
+
+vi.mock("../../../store/useAppStore", () => ({
+    default: () => ({
+        setNftContract: mockSetNftContract,
+        setMarketplaceContract: mockSetMarketplaceContract,
+        setChainConfig: mockSetChainConfig,
+        chainConfig: null,
+    }),
+}));
+
+vi.mock("../../../hooks/useWallet", () => ({
+    default: mockUseWallet,
+}));
+
+// Mock viem.getContract
+const mockGetContract = vi.fn(() => ({}));
+vi.mock("viem", () => ({
+    getContract: mockGetContract,
+}));
+
+// ------------------------------------------------------
+// Helper to re-import App with fresh mocks
+// ------------------------------------------------------
+async function loadApp() {
+    await vi.resetModules(); // Important!
+    mockGetContract.mockClear();
+
+    const mod = await import("../App.jsx");
+    App = mod.default;
+}
+
+// ------------------------------------------------------
+// Render helper
+// ------------------------------------------------------
+const renderApp = () =>
+    render(
         <Router>
             <App />
         </Router>
     );
 
-    it('renders the core layout components correctly', () => {
-        renderComponent();
+// ------------------------------------------------------
+// TEST SUITE
+// ------------------------------------------------------
+describe("App Component — FULL COVERAGE", () => {
 
-        // Check if the Header, Footer, and Modals are rendered
-        expect(screen.getByTestId('mock-header')).toBeInTheDocument();
-        expect(screen.getByTestId('mock-footer')).toBeInTheDocument();
-        expect(screen.getByTestId('mock-global-modal')).toBeInTheDocument();
+    beforeEach(async () => {
+        await loadApp();
 
-        // Check if the main content area has the correct CSS class for styling/structure
-        const mainElement = screen.getByRole('main');
-        expect(mainElement).toBeInTheDocument();
-        expect(mainElement).toHaveClass('min-h-[calc(100vh-164px)]');
+        useModalStoreMock.mockReturnValue({
+            networkModalOpen: false,
+            setNetworkModalOpen: mockSetNetworkModalOpen,
+        });
     });
 
-    it('does not display the NetworkModal by default if networkModalOpen is false', () => {
-        renderComponent();
-        expect(screen.queryByTestId('mock-network-modal')).not.toBeInTheDocument();
+    // --------------------------------------------------
+    it("renders header, footer, modal, and layout", () => {
+        renderApp();
+
+        expect(screen.getByTestId("mock-header")).toBeInTheDocument();
+        expect(screen.getByTestId("mock-footer")).toBeInTheDocument();
+        expect(screen.getByTestId("mock-global-modal")).toBeInTheDocument();
+
+        expect(screen.getByRole("main")).toHaveClass("min-h-[calc(100vh-164px)]");
     });
 
-    it('displays the NetworkModal when networkModalOpen is true in the store', () => {
-        // Override the mock implementation for this specific test case
-        require('../../store/modalStore').useModalStore.mockImplementation(() => ({
+    // --------------------------------------------------
+    it("hides NetworkModal when networkModalOpen = false", () => {
+        renderApp();
+        expect(screen.queryByTestId("mock-network-modal")).not.toBeInTheDocument();
+    });
+
+    // --------------------------------------------------
+    it("shows NetworkModal when networkModalOpen = true", async () => {
+        useModalStoreMock.mockReturnValue({
             networkModalOpen: true,
             setNetworkModalOpen: mockSetNetworkModalOpen,
-        }));
+        });
 
-        renderComponent();
-        expect(screen.getByTestId('mock-network-modal')).toBeInTheDocument();
+        await loadApp();
+        renderApp();
+
+        expect(screen.getByTestId("mock-network-modal")).toBeInTheDocument();
     });
 
-    /* 
-     * NOTE: Testing the useEffect hooks that rely on useWallet and useAppStore 
-     * requires more complex setup using `act` and potentially an actual state management 
-     * library implementation rather than simple function mocks, as React batches updates
-     * that trigger subsequent effects.
-     * 
-     * The tests above verify the structure and conditional rendering based on store state.
-     */
+    // --------------------------------------------------
+    it("updates chainConfig when wallet connects", async () => {
+        mockUseWallet.mockReturnValue({
+            isConnected: true,
+            chainId: 1,
+            activeChain: {
+                id: 1,
+                name: "MockChain",
+                nativeCurrency: { symbol: "ETH" },
+                blockExplorers: { default: { url: "https://mockscan.com" } },
+            },
+        });
+
+        await loadApp();
+        renderApp();
+
+        await waitFor(() => {
+            expect(mockSetChainConfig).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    // --------------------------------------------------
+    it("initializes contracts when chainConfig exists", async () => {
+        mockUseWallet.mockReturnValue({
+            isConnected: true,
+            chainId: 1,
+            activeChain: {
+                id: 1,
+                name: "MockChain",
+                nativeCurrency: { symbol: "ETH" },
+                blockExplorers: { default: { url: "https://mockscan.com" } },
+            },
+        });
+
+        // useAppStore should return a non-null chainConfig
+        vi.mock("../../../store/useAppStore", () => ({
+            default: () => ({
+                setNftContract: mockSetNftContract,
+                setMarketplaceContract: mockSetMarketplaceContract,
+                setChainConfig: mockSetChainConfig,
+                chainConfig: {
+                    nftAddress: "0xNFT",
+                    marketplaceAddress: "0xMARKET",
+                },
+            }),
+        }));
+
+        await loadApp();
+        renderApp();
+
+        await waitFor(() => {
+            expect(mockGetContract).toHaveBeenCalledTimes(2);
+            expect(mockSetNftContract).toHaveBeenCalled();
+            expect(mockSetMarketplaceContract).toHaveBeenCalled();
+        });
+    });
+
+    // --------------------------------------------------
+    it("handles contract initialization failure gracefully", async () => {
+        mockUseWallet.mockReturnValue({
+            isConnected: true,
+            chainId: 1,
+            activeChain: {
+                id: 1,
+                name: "MockChain",
+                nativeCurrency: { symbol: "ETH" },
+                blockExplorers: { default: { url: "https://mockscan.com" } },
+            },
+        });
+
+        // make getContract throw
+        mockGetContract.mockImplementation(() => {
+            throw new Error("bad ABI");
+        });
+
+        vi.mock("../../../store/useAppStore", () => ({
+            default: () => ({
+                setNftContract: mockSetNftContract,
+                setMarketplaceContract: mockSetMarketplaceContract,
+                setChainConfig: mockSetChainConfig,
+                chainConfig: {
+                    nftAddress: "0xNFT",
+                    marketplaceAddress: "0xMARKET",
+                },
+            }),
+        }));
+
+        await loadApp();
+        renderApp();
+
+        // Should NOT crash — so we only assert that set* were NOT called
+        await waitFor(() => {
+            expect(mockSetNftContract).not.toHaveBeenCalled();
+            expect(mockSetMarketplaceContract).not.toHaveBeenCalled();
+        });
+    });
 });

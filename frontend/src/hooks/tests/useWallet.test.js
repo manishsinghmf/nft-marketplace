@@ -3,7 +3,7 @@ import useWallet from "../useWallet";
 import { formatEther } from "viem";
 
 // ---- Mock supportedChains ----
-jest.mock("../../config/chains", () => ({
+vi.mock("../../config/chains", () => ({
     supportedChains: [
         {
             id: 1,
@@ -21,13 +21,13 @@ jest.mock("../../config/chains", () => ({
 }));
 
 // ---- Mock Wagmi hooks ----
-const mockUseAccount = jest.fn();
-const mockUseBalance = jest.fn();
-const mockUseChainId = jest.fn();
-const mockUseSwitchChain = jest.fn();
-const mockUseDisconnect = jest.fn();
+const mockUseAccount = vi.fn();
+const mockUseBalance = vi.fn();
+const mockUseChainId = vi.fn();
+const mockUseSwitchChain = vi.fn();
+const mockUseDisconnect = vi.fn();
 
-jest.mock("wagmi", () => ({
+vi.mock("wagmi", () => ({
     useAccount: () => mockUseAccount(),
     useBalance: (args) => mockUseBalance(args),
     useChainId: () => mockUseChainId(),
@@ -37,7 +37,7 @@ jest.mock("wagmi", () => ({
 
 describe("useWallet()", () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     test("returns wallet data when connected", () => {
@@ -51,16 +51,16 @@ describe("useWallet()", () => {
 
         mockUseBalance.mockReturnValue({
             data: { value: 1000000000000000000n, symbol: "ETH" },
-            refetch: jest.fn(),
+            refetch: vi.fn(),
         });
 
         mockUseSwitchChain.mockReturnValue({
-            switchChain: jest.fn(),
+            switchChain: vi.fn(),
             isPending: false,
         });
 
         mockUseDisconnect.mockReturnValue({
-            disconnect: jest.fn(),
+            disconnect: vi.fn(),
         });
 
         const wallet = useWallet();
@@ -90,16 +90,16 @@ describe("useWallet()", () => {
 
         mockUseBalance.mockReturnValue({
             data: null,
-            refetch: jest.fn(),
+            refetch: vi.fn(),
         });
 
         mockUseSwitchChain.mockReturnValue({
-            switchChain: jest.fn(),
+            switchChain: vi.fn(),
             isPending: false,
         });
 
         mockUseDisconnect.mockReturnValue({
-            disconnect: jest.fn(),
+            disconnect: vi.fn(),
         });
 
         const wallet = useWallet();
@@ -119,16 +119,16 @@ describe("useWallet()", () => {
 
         mockUseBalance.mockReturnValue({
             data: null,
-            refetch: jest.fn(),
+            refetch: vi.fn(),
         });
 
         mockUseSwitchChain.mockReturnValue({
-            switchChain: jest.fn(),
+            switchChain: vi.fn(),
             isPending: false,
         });
 
         mockUseDisconnect.mockReturnValue({
-            disconnect: jest.fn(),
+            disconnect: vi.fn(),
         });
 
         const wallet = useWallet();
@@ -142,8 +142,8 @@ describe("useWallet()", () => {
     });
 
     test("exposes switchChain & disconnect actions", () => {
-        const mockSwitch = jest.fn();
-        const mockDisconnect = jest.fn();
+        const mockSwitch = vi.fn();
+        const mockDisconnect = vi.fn();
 
         mockUseAccount.mockReturnValue({
             address: "0xAAA",
@@ -152,7 +152,7 @@ describe("useWallet()", () => {
         });
 
         mockUseChainId.mockReturnValue(1);
-        mockUseBalance.mockReturnValue({ data: null, refetch: jest.fn() });
+        mockUseBalance.mockReturnValue({ data: null, refetch: vi.fn() });
 
         mockUseSwitchChain.mockReturnValue({
             switchChain: mockSwitch,

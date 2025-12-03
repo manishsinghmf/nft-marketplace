@@ -12,13 +12,6 @@ export default function Home() {
             Discover and collect your favourite digital NFTs
           </h1>
           <br />
-          {/* <div className="rainbow-connect-wallet">
-            <ConnectButton
-              showBalance={false}
-              accountStatus="address"
-              chainStatus="icon"
-            />
-          </div> */}
         </div>
 
         <div className="flex justify-center">

@@ -3,28 +3,27 @@
 import { ContractService } from "../contractService";
 import { readFromContract, writeToContract } from "../../hooks/useContract";
 import { IpfsService } from "../ipfsService";
-import CONTRACT_FUNCTIONS from "../../config/contractFunctions";
 // ------------------------
 // Required mocks FIRST
 // ------------------------
-jest.mock("../../config/ipfsConfig", () => ({
+vi.mock("../../config/ipfsConfig", () => ({
     IPFS_CONFIG: {
         GATEWAY: "https://gateway.pinata.cloud/ipfs/",
     },
 }));
 
-jest.mock("../../hooks/useContract", () => ({
-    readFromContract: jest.fn(),
-    writeToContract: jest.fn(),
+vi.mock("../../hooks/useContract", () => ({
+    readFromContract: vi.fn(),
+    writeToContract: vi.fn(),
 }));
 
-jest.mock("../ipfsService", () => ({
+vi.mock("../ipfsService", () => ({
     IpfsService: {
-        fetchMetadata: jest.fn(),
+        fetchMetadata: vi.fn(),
     },
 }));
 
-jest.mock("../../config/contracts", () => ({
+vi.mock("../../config/contracts", () => ({
     CONTRACTS: {
         1: {
             name: "TestNet",
@@ -35,7 +34,7 @@ jest.mock("../../config/contracts", () => ({
     },
 }));
 
-jest.mock("../../config/contractFunctions", () => ({
+vi.mock("../../config/contractFunctions", () => ({
     __esModule: true,
     default: {
         MARKETPLACE: {
@@ -56,8 +55,8 @@ jest.mock("../../config/contractFunctions", () => ({
 
 // Silence console.warn for cleaner test logs
 beforeEach(() => {
-    jest.clearAllMocks();
-    jest.spyOn(console, "warn").mockImplementation(() => { });
+    vi.clearAllMocks();
+    vi.spyOn(console, "warn").mockImplementation(() => { });
 });
 
 describe("ContractService", () => {

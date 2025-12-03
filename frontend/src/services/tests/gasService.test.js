@@ -2,7 +2,7 @@
 import estimateTotalGasCost from "../gasService";
 
 // Mock CONTRACTS so tests do not depend on real config
-jest.mock("../../config/contracts", () => ({
+vi.mock("../../config/contracts", () => ({
     CONTRACTS: {
         1: {
             nft: {
@@ -25,11 +25,11 @@ describe("estimateTotalGasCost", () => {
 
     beforeEach(() => {
         publicClient = {
-            estimateContractGas: jest.fn(),
-            getGasPrice: jest.fn(),
+            estimateContractGas: vi.fn(),
+            getGasPrice: vi.fn(),
         };
-        jest.clearAllMocks();
-        jest.spyOn(console, "error").mockImplementation(() => { });
+        vi.clearAllMocks();
+        vi.spyOn(console, "error").mockImplementation(() => { });
     });
 
     test("throws error when publicClient is missing", async () => {
