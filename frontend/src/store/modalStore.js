@@ -1,6 +1,8 @@
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
+import { useStore } from "zustand";
 
-export const useModalStore = create((set) => ({
+// Create vanilla store
+export const modalStoreInstance = createStore((set) => ({
     modal: {
         open: false,
         heading: "",
@@ -8,16 +10,10 @@ export const useModalStore = create((set) => ({
         loading: true,
         actionText: "OK",
         onAction: null,
-        context: null,
+        context: "general",
     },
-    /** ----------------------------------------------------------
-     * openModal()
-     * Supports BOTH formats:
-     *   openModal("Title", "Description");
-     *   openModal({ heading, description, ... });
-     * --------------------------------------------------------- */
+
     openModal: (headingOrObj, description = "", loading = true, context = "general") => {
-        // Case 1 — called as: openModal("Title", "Desc")
         if (typeof headingOrObj === "string") {
             return set(() => ({
                 modal: {
@@ -28,14 +24,11 @@ export const useModalStore = create((set) => ({
                     actionText: "OK",
                     onAction: null,
                     context,
-
                 },
             }));
         }
 
-        // Case 2 — called as: openModal({ heading, description, ... })
         const payload = headingOrObj || {};
-
         return set(() => ({
             modal: {
                 open: true,
@@ -49,24 +42,15 @@ export const useModalStore = create((set) => ({
         }));
     },
 
-    /** ----------------------------------------------------------
-     * setModal() — override modal partially
-     * Example:
-     *  setModal({ heading: "Success", description: "Done!" })
-     * --------------------------------------------------------- */
     setModal: (updates = {}) =>
         set((state) => ({
             modal: {
                 ...state.modal,
                 ...updates,
                 open: updates.open ?? true,
-                context: state.modal.context,
             },
         })),
 
-    /** ----------------------------------------------------------
-     * closeModal()
-     * --------------------------------------------------------- */
     closeModal: (context) =>
         set((state) => {
             if (!context || context === state.modal.context) {
@@ -75,3 +59,7 @@ export const useModalStore = create((set) => ({
             return {};
         }),
 }));
+
+// 🔥 FIX: React hook version of the vanilla store
+export const useModalStore = (selector) =>
+    useStore(modalStoreInstance, selector || ((state) => state));

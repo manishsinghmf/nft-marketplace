@@ -1,6 +1,6 @@
 import axios from "axios";
 import { formatUnits, parseUnits } from "viem";
-import { IPFS_CONFIG } from "../config/ipfsConfig";
+import { IPFS_CONFIG } from "../config/ipfsConfig.js";
 
 export function mapformat(old_format) {
   let new_format = {}

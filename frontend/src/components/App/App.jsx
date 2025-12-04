@@ -15,6 +15,7 @@ import { useModalStore } from "../../store/modalStore";
 
 import { getContract } from "viem";
 import { nftAbi } from "../../config/abis/fandomNftAbi";
+import { CONTRACTS, DEFAULT_CHAIN_ID } from "../../config/contracts";
 import { marketplaceAbi } from "../../config/abis/marketplaceAbi";
 
 export default function App() {
@@ -39,13 +40,15 @@ export default function App() {
     useEffect(() => {
         if (!isConnected || !activeChain) return;
 
+        const chainContracts = CONTRACTS[activeChain.id] ?? CONTRACTS[DEFAULT_CHAIN_ID];
+
         setChainConfig({
             id: activeChain.id,
             name: activeChain.name,
             currency: activeChain.nativeCurrency.symbol,
             explorerUrl: activeChain.blockExplorers?.default?.url || "",
-            nftAddress: import.meta.env.VITE_NFT_CONTRACT_ADDRESS,
-            marketplaceAddress: import.meta.env.VITE_MARKETPLACE_CONTRACT_ADDRESS,
+            nftAddress: chainContracts.nft.address,
+            marketplaceAddress: chainContracts.marketplace.address,
         });
     }, [isConnected, activeChain, setChainConfig]);
 

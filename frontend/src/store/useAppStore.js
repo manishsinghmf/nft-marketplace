@@ -1,8 +1,9 @@
 // src/store/useAppStore.js
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
+import { useStore } from "zustand";
 
-const useAppStore = create((set) => ({
-    // 🔗 Wallet + network state
+// Vanilla store instance (full state logic)
+export const appStoreInstance = createStore((set) => ({
     walletConnected: null,
     walletEthBalance: "0",
     isChainSupported: false,
@@ -10,21 +11,29 @@ const useAppStore = create((set) => ({
     networkSelected: null,
     isNetworkModalOpen: false,
 
-    // 🧩 Contract instances
     nftContract: null,
     marketplaceContract: null,
 
-    // ⚙️ Setters
-    setWalletConnected: (val) => set({ walletConnected: val }),
-    setWalletEthBalance: (val) => set({ walletEthBalance: val }),
-    setIsChainSupported: (val) => set({ isChainSupported: val }),
-    setChainConfig: (val) => set({ chainConfig: val }),
-    setNetworkSelected: (val) => set({ networkSelected: val }),
-    setIsNetworkModalOpen: (val) => set({ isNetworkModalOpen: val }),
+    setWalletConnected: (v) => set({ walletConnected: v }),
+    setWalletEthBalance: (v) => set({ walletEthBalance: v }),
+    setIsChainSupported: (v) => set({ isChainSupported: v }),
+    setChainConfig: (config) => set({ chainConfig: config }),
+    setNetworkSelected: (v) => set({ networkSelected: v }),
+    setIsNetworkModalOpen: (v) => set({ isNetworkModalOpen: v }),
 
-    // ✅ Contract setters
-    setNftContract: (contract) => set({ nftContract: contract }),
-    setMarketplaceContract: (contract) => set({ marketplaceContract: contract }),
+    setNftContract: (c) => set({ nftContract: c }),
+    setMarketplaceContract: (c) => set({ marketplaceContract: c }),
 }));
+
+// React hook wrapper
+function useAppStore(selector) {
+    return useStore(appStoreInstance, selector || ((state) => state));
+}
+
+// 🔥 Attach vanilla store API to the hook (just like Zustand defaults)
+useAppStore.setState = appStoreInstance.setState;
+useAppStore.getState = appStoreInstance.getState;
+useAppStore.subscribe = appStoreInstance.subscribe;
+useAppStore.destroy = appStoreInstance.destroy;
 
 export default useAppStore;

@@ -7,7 +7,6 @@ import {
 } from "wagmi";
 
 import { useMemo } from "react";
-
 import MintForm from "./MintForm";
 import useMintTx from "../../hooks/useMintTx";
 import { CONTRACTS } from "../../config/contracts";

@@ -97,14 +97,6 @@ export default function Header() {
             {/* Desktop Menu */}
             <div className="mr-4 hidden lg:block">{navList}</div>
 
-            {/* {networkSelected && <Button
-              variant="gradient"
-              size="sm"
-              className="connect-wallet-btn
-                hidden lg:inline-block hover:text-black focus:text-black active:text-black"
-            >
-              {networkSelected}
-            </Button>} */}
             {/* RainbowKit Desktop */}
             <div className="connect-wallet-btn hidden lg:inline-block">
               <ConnectButton

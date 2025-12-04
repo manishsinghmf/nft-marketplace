@@ -8,5 +8,6 @@
 # production
 /build
 
-# Local Netlify folder
-.netlify
+# Jest coverage output
+coverage/
+
